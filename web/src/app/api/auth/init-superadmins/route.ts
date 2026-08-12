@@ -11,10 +11,10 @@ export async function POST() {
 
 async function handleInitSuperAdmins() {
   try {
-    const s1Email = (process.env.SUPERADMIN1_EMAIL || process.env.NEXT_PUBLIC_SUPERADMIN_1_EMAIL || 'incharge@tgpcet.ac.in').toLowerCase().trim();
+    const s1Email = (process.env.SUPERADMIN1_EMAIL || process.env.NEXT_PUBLIC_SUPERADMIN_1_EMAIL || 'incharge@tgpcet.com').toLowerCase().trim();
     const s1Password = process.env.SUPERADMIN1_PASSWORD || process.env.NEXT_PUBLIC_SUPERADMIN_1_PASSWORD || 'demo123';
 
-    const s2Email = (process.env.SUPERADMIN2_EMAIL || process.env.NEXT_PUBLIC_SUPERADMIN_2_EMAIL || 'darshan@tgpcet.ac.in').toLowerCase().trim();
+    const s2Email = (process.env.SUPERADMIN2_EMAIL || process.env.NEXT_PUBLIC_SUPERADMIN_2_EMAIL || 'darshan@tgpcet.com').toLowerCase().trim();
     const s2Password = process.env.SUPERADMIN2_PASSWORD || process.env.NEXT_PUBLIC_SUPERADMIN_2_PASSWORD || 'demo123';
 
     const results = {

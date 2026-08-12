@@ -51,78 +51,6 @@ interface EventItem {
   status: 'Upcoming' | 'Completed' | 'Open for Registration';
 }
 
-const DEFAULT_APPLICATIONS: MockApplication[] = [
-  {
-    id: 'app-101',
-    applicant_name: 'Aarav Mehta',
-    applicant_email: 'aarav.m@tgpcet.ac.in',
-    education: 'B.Tech Mechanical',
-    title: 'Autonomous AI Inspection Rover',
-    type: 'project',
-    abstract: 'Requesting 3D Printer and CNC PCB machine access for structural pipe inspection rover development.',
-    pdf_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-    status: 'pending',
-    date: '2026-08-01',
-  },
-  {
-    id: 'app-102',
-    applicant_name: 'Neha Verma',
-    applicant_email: 'neha.v@tgpcet.ac.in',
-    education: 'B.Tech Electrical',
-    title: 'Smart IoT Agriculture Monitoring System',
-    type: 'project',
-    abstract: 'Requesting IoT & PCB Cell workstation access for ESP32 & LoRa board etching.',
-    pdf_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-    status: 'approved',
-    incharge_message: 'Approved! You can access IoT & PCB cell from Monday 10:00 AM.',
-    date: '2026-07-28',
-  },
-  {
-    id: 'app-103',
-    applicant_name: 'Vikram Singh',
-    applicant_email: 'vikram.s@tgpcet.ac.in',
-    education: 'B.Tech Mechatronics',
-    title: '6-DOF Robotic Arm Haptic Glove',
-    type: 'training',
-    abstract: 'Registration request for 6-Axis Industrial Robotics hands-on masterclass.',
-    status: 'pending',
-    date: '2026-08-03',
-  },
-];
-
-const DEFAULT_EVENTS: EventItem[] = [
-  {
-    id: 'ev-1',
-    title: 'Summer Prototyping Boot Camp 2026',
-    category: 'Training',
-    description: 'Learn AutoCAD, 3D printing, and CNC PCB etching in a 2-week hands-on intensive course.',
-    date: 'August 10-24, 2026',
-    trainer: 'Dr. Neeraj Waijode & Prof. S. N. Kulkarni',
-    seats: '30 Seats Available',
-    status: 'Open for Registration',
-  },
-  {
-    id: 'ev-2',
-    title: '6-Axis Industrial Robotic Arm Masterclass',
-    category: 'Workshop',
-    description: 'Hands-on training session on kinematics, programming, and haptic feedback control.',
-    date: 'August 18, 2026',
-    trainer: 'Prof. M. B. Patil',
-    seats: '20 Seats Available',
-    status: 'Upcoming',
-  },
-  {
-    id: 'ev-3',
-    title: 'AICTE IDEA LAB National Innovation Hackathon',
-    category: 'Event',
-    description: '48-hour hardware prototyping competition with cash prizes & lab incubation support.',
-    date: 'September 5-7, 2026',
-    trainer: 'Dr. Neeraj Waijode (Incharge)',
-    seats: 'Open for All TGPCET Teams',
-    status: 'Upcoming',
-  },
-];
-
 export default function InchargeDashboardPage() {
   const { isSuperAdmin1, user, updateProfile, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<'requests' | 'events' | 'notifications' | 'account'>('requests');
@@ -149,10 +77,7 @@ export default function InchargeDashboardPage() {
   });
 
   // Notifications state
-  const [notifications, setNotifications] = useState([
-    { id: '1', title: 'Lab Calibration Completed', message: 'All 5 technical sections are operational.', time: 'Today' },
-    { id: '2', title: 'New Project Applications Received', message: '3 new student project proposals awaiting incharge review.', time: 'Yesterday' },
-  ]);
+  const [notifications, setNotifications] = useState<Array<{ id: string; title: string; message: string; time: string }>>([]);
   const [newNotifTitle, setNewNotifTitle] = useState('');
   const [newNotifMessage, setNewNotifMessage] = useState('');
   const [notifSent, setNotifSent] = useState(false);
@@ -170,6 +95,74 @@ export default function InchargeDashboardPage() {
   const [confirmPasswordInput, setConfirmPasswordInput] = useState('');
   const [accountStatusMsg, setAccountStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Live stats from API
+  const [liveStats, setLiveStats] = useState({
+    totalUsers: 0,
+    totalProjectRequests: 0,
+    totalNotifications: 0,
+  });
+
+  // Fetch all live data from Supabase APIs
+  const fetchLiveData = async () => {
+    try {
+      // 1. Fetch live proposals & applications from Supabase
+      const propRes = await fetch('/api/proposals?all=true', { cache: 'no-store' });
+      const propData = await propRes.json();
+      if (propData.success && Array.isArray(propData.proposals) && propData.proposals.length > 0) {
+        const mappedProps = propData.proposals.map((p: any) => ({
+          id: p.id,
+          applicant_name: p.applicant_name,
+          applicant_email: p.applicant_email,
+          education: `${p.branch || 'B.Tech'} (${p.department || 'Engineering'})`,
+          title: p.project_name,
+          type: 'project',
+          abstract: p.project_description || p.problem_statement,
+          pdf_url: p.document_path,
+          status: p.status === 'submitted' ? 'pending' : (p.status || 'pending'),
+          incharge_message: p.admin_comments || '',
+          date: p.submitted_at ? new Date(p.submitted_at).toLocaleDateString() : '',
+        }));
+        setApplications(mappedProps);
+      } else {
+        const appsRes = await fetch('/api/applications', { cache: 'no-store' });
+        const appsData = await appsRes.json();
+        if (appsData.success && Array.isArray(appsData.applications)) {
+          setApplications(appsData.applications);
+        }
+      }
+
+      // 2. Fetch live events & activities from Supabase
+      const actRes = await fetch('/api/activities?all=true', { cache: 'no-store' });
+      const actData = await actRes.json();
+      if (actData.success && Array.isArray(actData.activities)) {
+        const mappedEvents = actData.activities.map((a: any) => ({
+          id: a.id,
+          title: a.title,
+          category: a.type === 'workshop' ? 'Workshop' : (a.type === 'event' ? 'Event' : 'Training'),
+          description: a.description,
+          date: a.date,
+          trainer: a.organizer || 'Dr. Neeraj Waijode',
+          seats: `${a.max_participants || 30} Seats (${a.enrolled_count || 0} Registered)`,
+          status: a.registration_open ? 'Open for Registration' : 'Upcoming',
+        }));
+        setEvents(mappedEvents);
+      }
+
+      // 3. Fetch live admin stats
+      const statsRes = await fetch('/api/admin/stats', { cache: 'no-store' });
+      const statsData = await statsRes.json();
+      if (statsData.success && statsData.stats) {
+        setLiveStats({
+          totalUsers: statsData.stats.totalUsers || 0,
+          totalProjectRequests: statsData.stats.totalProjectRequests || 0,
+          totalNotifications: statsData.stats.totalNotifications || 0,
+        });
+      }
+    } catch (e) {
+      console.error('Error fetching incharge live data:', e);
+    }
+  };
+
   useEffect(() => {
     // Sync profile form when user object updates
     if (user) {
@@ -183,47 +176,52 @@ export default function InchargeDashboardPage() {
       });
     }
 
-    // Sync applications from local storage or defaults
-    const stored = localStorage.getItem('idea_lab_applications');
-    if (stored) {
+    // Sync incharge notifications from local storage
+    const storedNotifs = localStorage.getItem('idea_lab_incharge_notifications');
+    if (storedNotifs) {
       try {
-        const parsed = JSON.parse(stored);
-        setApplications(parsed.length ? parsed : DEFAULT_APPLICATIONS);
+        const parsedNotifs = JSON.parse(storedNotifs);
+        setNotifications(Array.isArray(parsedNotifs) ? parsedNotifs : []);
       } catch (e) {
-        setApplications(DEFAULT_APPLICATIONS);
+        setNotifications([]);
       }
-    } else {
-      setApplications(DEFAULT_APPLICATIONS);
     }
 
-    // Sync events from local storage or defaults
-    const storedEv = localStorage.getItem('idea_lab_events');
-    if (storedEv) {
-      try {
-        setEvents(JSON.parse(storedEv));
-      } catch (e) {
-        setEvents(DEFAULT_EVENTS);
-      }
-    } else {
-      setEvents(DEFAULT_EVENTS);
-    }
+    // Initial fetch & real-time polling interval every 4 seconds
+    fetchLiveData();
+    const interval = setInterval(fetchLiveData, 4000);
+    return () => clearInterval(interval);
   }, [user]);
 
   // LIMITED DASHBOARD METRICS strictly: (TOTAL USER, TOTAL PROJECT REQUEST, NOTIFICATION)
-  const totalUsers = 128; // Active registered students & faculty
-  const totalProjectRequests = applications.length;
-  const totalNotifications = notifications.length;
+  const totalUsers = liveStats.totalUsers;
+  const totalProjectRequests = applications.length || liveStats.totalProjectRequests;
+  const totalNotifications = notifications.length || liveStats.totalNotifications;
 
   const filteredApplications = applications.filter((app) =>
     filterStatus === 'all' ? true : app.status === filterStatus
   );
 
-  const handleDecision = (id: string, status: 'approved' | 'rejected') => {
+  const handleDecision = async (id: string, status: 'approved' | 'rejected') => {
     const updated = applications.map((app) =>
       app.id === id ? { ...app, status, incharge_message: messageInput } : app
     );
     setApplications(updated);
-    localStorage.setItem('idea_lab_applications', JSON.stringify(updated));
+
+    try {
+      await fetch('/api/proposals', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status, admin_comments: messageInput }),
+      });
+      await fetch('/api/applications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status, incharge_message: messageInput }),
+      });
+    } catch (err) {
+      console.error('Failed to sync decision to server:', err);
+    }
 
     setActionSuccess(`Application ${status} successfully! Direct message dispatched to ${selectedApp?.applicant_name}.`);
     setTimeout(() => setActionSuccess(''), 5000);
@@ -232,9 +230,11 @@ export default function InchargeDashboardPage() {
     setMessageInput('');
   };
 
-  const handleSaveEvent = (e: React.FormEvent) => {
+  const handleSaveEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     let updatedEv: EventItem[];
+    const payload = editingEvent ? { id: editingEvent.id, ...eventForm } : { ...eventForm };
+
     if (editingEvent) {
       updatedEv = events.map((ev) => (ev.id === editingEvent.id ? { ...ev, ...eventForm } : ev));
     } else {
@@ -245,7 +245,26 @@ export default function InchargeDashboardPage() {
       updatedEv = [newEv, ...events];
     }
     setEvents(updatedEv);
-    localStorage.setItem('idea_lab_events', JSON.stringify(updatedEv));
+
+    try {
+      await fetch('/api/activities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingEvent ? editingEvent.id : undefined,
+          title: eventForm.title,
+          type: eventForm.category.toLowerCase(),
+          description: eventForm.description,
+          date: eventForm.date,
+          organizer: eventForm.trainer,
+          registration_open: eventForm.status === 'Open for Registration',
+          status: 'published',
+        }),
+      });
+    } catch (err) {
+      console.error('Failed to sync activity to server:', err);
+    }
+
     setShowEventModal(false);
     setEditingEvent(null);
     setEventForm({
@@ -259,11 +278,17 @@ export default function InchargeDashboardPage() {
     });
   };
 
-  const handleDeleteEvent = (id: string) => {
-    if (confirm('Are you sure you want to delete this Event/Training program?')) {
-      const updatedEv = events.filter((ev) => ev.id !== id);
-      setEvents(updatedEv);
-      localStorage.setItem('idea_lab_events', JSON.stringify(updatedEv));
+  const [deleteConfirmEventId, setDeleteConfirmEventId] = useState<string | null>(null);
+
+  const handleDeleteEvent = async (id: string) => {
+    const updatedEv = events.filter((ev) => ev.id !== id);
+    setEvents(updatedEv);
+    setDeleteConfirmEventId(null);
+
+    try {
+      await fetch(`/api/events?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    } catch (err) {
+      console.error('Failed to delete event on server:', err);
     }
   };
 
@@ -275,7 +300,9 @@ export default function InchargeDashboardPage() {
       message: newNotifMessage,
       time: 'Just Now',
     };
-    setNotifications([newN, ...notifications]);
+    const updatedNotifs = [newN, ...notifications];
+    setNotifications(updatedNotifs);
+    localStorage.setItem('idea_lab_incharge_notifications', JSON.stringify(updatedNotifs));
     setNotifSent(true);
     setTimeout(() => {
       setNotifSent(false);
@@ -319,9 +346,9 @@ export default function InchargeDashboardPage() {
     return (
       <div className="glass-card p-12 text-center max-w-md mx-auto my-12 space-y-4 border border-rose-500/30">
         <Lock className="w-12 h-12 text-rose-500 mx-auto" />
-        <h2 className="text-xl font-bold text-slate-900 dark:text-white">SuperAdmin Access Restricted</h2>
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Incharge Access Restricted</h2>
         <p className="text-xs text-slate-500">
-          This console is reserved strictly for <strong>SUPERADMIN 1 (Dr. Neeraj Waijode - IDEA LAB Incharge)</strong>.
+          This console is reserved strictly for <strong>Dr. Neeraj Waijode (IDEA LAB Incharge)</strong>.
         </p>
       </div>
     );
@@ -335,7 +362,7 @@ export default function InchargeDashboardPage() {
           <div className="flex items-center space-x-2">
             <span className="px-3 py-1 rounded-full text-[10px] font-extrabold uppercase bg-indigo-600 text-white tracking-widest inline-flex items-center space-x-1">
               <ShieldAlert className="w-3.5 h-3.5" />
-              <span>SUPERADMIN 1 CONSOLE</span>
+              <span>INCHARGE CONSOLE</span>
             </span>
             <span className="text-xs text-indigo-300 font-semibold">
               {profileForm.first_name} {profileForm.last_name} (Lab Incharge)
@@ -461,7 +488,7 @@ export default function InchargeDashboardPage() {
           }`}
         >
           <KeyRound className="w-4 h-4 text-amber-400" />
-          <span>Superadmin Profile & Password</span>
+          <span>Profile & Password</span>
         </button>
       </div>
 
@@ -506,8 +533,12 @@ export default function InchargeDashboardPage() {
 
           <div className="space-y-4">
             {filteredApplications.length === 0 ? (
-              <div className="p-8 text-center text-slate-500 text-xs">
-                No applications matching filter state "{filterStatus}".
+              <div className="p-12 text-center rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 space-y-3">
+                <FileText className="w-10 h-10 text-slate-400 mx-auto" />
+                <h3 className="text-sm font-bold text-slate-800 dark:text-white">No Live Proposals or Applications Received</h3>
+                <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  Student project proposals and training applications submitted through the <strong>/apply</strong> page will appear here live in real time.
+                </p>
               </div>
             ) : (
               filteredApplications.map((app) => (
@@ -612,60 +643,70 @@ export default function InchargeDashboardPage() {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {events.map((ev) => (
-              <div
-                key={ev.id}
-                className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/60 border border-indigo-500/15 space-y-3 text-xs flex flex-col justify-between"
-              >
-                <div className="space-y-2">
-                  <div className="flex justify-between items-start gap-2">
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
-                      {ev.category}
-                    </span>
-                    <span className="text-[11px] font-semibold text-emerald-500">{ev.status}</span>
+          {events.length === 0 ? (
+            <div className="p-12 text-center rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 space-y-3">
+              <Calendar className="w-10 h-10 text-slate-400 mx-auto" />
+              <h3 className="text-sm font-bold text-slate-800 dark:text-white">No Events or Training Workshops Added Yet</h3>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                Click <strong>"+ Add Event / Training"</strong> above to publish upcoming workshops, boot camps, or hackathons.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {events.map((ev) => (
+                <div
+                  key={ev.id}
+                  className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/60 border border-indigo-500/15 space-y-3 text-xs flex flex-col justify-between"
+                >
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-start gap-2">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
+                        {ev.category}
+                      </span>
+                      <span className="text-[11px] font-semibold text-emerald-500">{ev.status}</span>
+                    </div>
+
+                    <h3 className="font-extrabold text-base text-slate-900 dark:text-white">{ev.title}</h3>
+                    <p className="text-slate-600 dark:text-slate-300">{ev.description}</p>
+
+                    <div className="pt-2 space-y-1 text-[11px] text-slate-500 border-t border-slate-200 dark:border-slate-700/50">
+                      <p>📅 <strong>Date:</strong> {ev.date}</p>
+                      <p>👨‍🏫 <strong>Trainer / Coordinator:</strong> {ev.trainer}</p>
+                      <p>👥 <strong>Capacity:</strong> {ev.seats}</p>
+                    </div>
                   </div>
 
-                  <h3 className="font-extrabold text-base text-slate-900 dark:text-white">{ev.title}</h3>
-                  <p className="text-slate-600 dark:text-slate-300">{ev.description}</p>
-
-                  <div className="pt-2 space-y-1 text-[11px] text-slate-500 border-t border-slate-200 dark:border-slate-700/50">
-                    <p>📅 <strong>Date:</strong> {ev.date}</p>
-                    <p>👨‍🏫 <strong>Trainer / Coordinator:</strong> {ev.trainer}</p>
-                    <p>👥 <strong>Capacity:</strong> {ev.seats}</p>
+                  <div className="flex space-x-2 pt-2">
+                    <button
+                      onClick={() => {
+                        setEditingEvent(ev);
+                        setEventForm({
+                          title: ev.title,
+                          category: ev.category,
+                          description: ev.description,
+                          date: ev.date,
+                          trainer: ev.trainer,
+                          seats: ev.seats,
+                          status: ev.status,
+                        });
+                        setShowEventModal(true);
+                      }}
+                      className="flex-1 py-2 rounded-2xl bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold hover:bg-indigo-200 transition flex items-center justify-center space-x-1"
+                    >
+                      <Edit className="w-3.5 h-3.5" />
+                      <span>Edit Program</span>
+                    </button>
+                    <button
+                      onClick={() => handleDeleteEvent(ev.id)}
+                      className="px-3 py-2 rounded-2xl bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400 font-bold hover:bg-rose-200 transition"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
-
-                <div className="flex space-x-2 pt-2">
-                  <button
-                    onClick={() => {
-                      setEditingEvent(ev);
-                      setEventForm({
-                        title: ev.title,
-                        category: ev.category,
-                        description: ev.description,
-                        date: ev.date,
-                        trainer: ev.trainer,
-                        seats: ev.seats,
-                        status: ev.status,
-                      });
-                      setShowEventModal(true);
-                    }}
-                    className="flex-1 py-2 rounded-2xl bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold hover:bg-indigo-200 transition flex items-center justify-center space-x-1"
-                  >
-                    <Edit className="w-3.5 h-3.5" />
-                    <span>Edit Program</span>
-                  </button>
-                  <button
-                    onClick={() => handleDeleteEvent(ev.id)}
-                    className="px-3 py-2 rounded-2xl bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400 font-bold hover:bg-rose-200 transition"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -726,15 +767,19 @@ export default function InchargeDashboardPage() {
           <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
             <h3 className="font-bold text-sm text-slate-900 dark:text-white">Active Notices History</h3>
             <div className="space-y-2 text-xs">
-              {notifications.map((n) => (
-                <div key={n.id} className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-indigo-500/10">
-                  <div className="flex justify-between font-bold text-slate-900 dark:text-white">
-                    <span>{n.title}</span>
-                    <span className="text-[10px] text-slate-400 font-normal">{n.time}</span>
+              {notifications.length === 0 ? (
+                <p className="text-slate-500 text-xs italic py-2">No incharge notices or announcements broadcasted yet.</p>
+              ) : (
+                notifications.map((n) => (
+                  <div key={n.id} className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-indigo-500/10">
+                    <div className="flex justify-between font-bold text-slate-900 dark:text-white">
+                      <span>{n.title}</span>
+                      <span className="text-[10px] text-slate-400 font-normal">{n.time}</span>
+                    </div>
+                    <p className="text-slate-600 dark:text-slate-300 mt-1">{n.message}</p>
                   </div>
-                  <p className="text-slate-600 dark:text-slate-300 mt-1">{n.message}</p>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -746,10 +791,10 @@ export default function InchargeDashboardPage() {
           <div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center space-x-2">
               <KeyRound className="w-5 h-5 text-amber-500" />
-              <span>SuperAdmin 1 Profile & Credentials Settings</span>
+              <span>Incharge Profile & Credentials Settings</span>
             </h2>
             <p className="text-xs text-slate-500">
-              Update Superadmin login password, ID/email, and contact details. Initial credentials are configured via <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-indigo-500 font-mono">.env.local</code>.
+              Update Incharge login password, ID/email, and contact details. Initial credentials are configured via <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-indigo-500 font-mono">.env.local</code>.
             </p>
           </div>
 

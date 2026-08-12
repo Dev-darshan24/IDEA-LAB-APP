@@ -7,7 +7,7 @@ import { User, Mail, Phone, Building, GraduationCap, MapPin, FileText, CheckCirc
 import { EducationType } from '@/types';
 
 export default function ProfilePage() {
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile, isSuperAdmin1, isSuperAdmin2 } = useAuth();
 
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -31,13 +31,24 @@ export default function ProfilePage() {
 
   const photoInputRef = useRef<HTMLInputElement>(null);
   const resumeInputRef = useRef<HTMLInputElement>(null);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const showError = (msg: string) => {
+    setErrorMessage(msg);
+    setTimeout(() => setErrorMessage(''), 5000);
+  };
 
   // Dynamic Applications state
   const [submittedApplications, setSubmittedApplications] = useState<any[]>([]);
 
   React.useEffect(() => {
-    const savedApps = JSON.parse(localStorage.getItem('idea_lab_applications') || '[]');
-    setSubmittedApplications(savedApps);
+    try {
+      const stored = localStorage.getItem('idea_lab_applications');
+      const savedApps = stored ? JSON.parse(stored) : [];
+      setSubmittedApplications(Array.isArray(savedApps) ? savedApps : []);
+    } catch (e) {
+      setSubmittedApplications([]);
+    }
   }, []);
 
   // Upload Profile Picture (Avatar)
@@ -46,7 +57,7 @@ export default function ProfilePage() {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file (PNG, JPG, WEBP).');
+      showError('Please upload an image file (PNG, JPG, WEBP).');
       return;
     }
 
@@ -70,11 +81,11 @@ export default function ProfilePage() {
         setUploadMessage('Profile picture updated successfully!');
         setTimeout(() => setUploadMessage(''), 3000);
       } else {
-        alert(result.message || 'Failed to upload image.');
+        showError(result.message || 'Failed to upload image.');
       }
     } catch (err: any) {
       console.error('Avatar upload error:', err);
-      alert('Failed to upload image.');
+      showError('Failed to upload image.');
     } finally {
       setUploadingAvatar(false);
     }
@@ -86,7 +97,7 @@ export default function ProfilePage() {
     if (!file) return;
 
     if (file.type !== 'application/pdf') {
-      alert('Please select a PDF file for your resume.');
+      showError('Please select a PDF file for your resume.');
       return;
     }
 
@@ -110,11 +121,11 @@ export default function ProfilePage() {
         setUploadMessage('Resume PDF uploaded successfully!');
         setTimeout(() => setUploadMessage(''), 3000);
       } else {
-        alert(result.message || 'Failed to upload PDF.');
+        showError(result.message || 'Failed to upload PDF.');
       }
     } catch (err: any) {
       console.error('Resume upload error:', err);
-      alert('Failed to upload PDF.');
+      showError('Failed to upload PDF.');
     } finally {
       setUploadingResume(false);
     }
@@ -448,12 +459,14 @@ export default function ProfilePage() {
             <Send className="w-5 h-5 text-sky-500" />
             <span>Apply Things (Submitted Applications)</span>
           </h2>
-          <Link
-            href="/apply"
-            className="px-4 py-2 rounded-full text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 shadow-md transition"
-          >
-            + Submit New Application
-          </Link>
+          {!isSuperAdmin1 && !isSuperAdmin2 && (
+            <Link
+              href="/apply"
+              className="px-4 py-2 rounded-full text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 shadow-md transition"
+            >
+              + Submit New Application
+            </Link>
+          )}
         </div>
 
         <div className="space-y-3">

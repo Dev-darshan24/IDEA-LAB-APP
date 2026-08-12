@@ -1,17 +1,17 @@
 -- ==========================================
--- AICTE IDEA LAB SEED DATA
--- Tulsiramji Gaikwad Patil College of Engineering & Technology
+-- AICTE IDEA LAB TGPCET - SEED DATA
+-- Safe to run in Supabase SQL Editor
 -- ==========================================
 
--- 1. SECTIONS SEED
-INSERT INTO public.sections (slug, title, subtitle, description, equipments, section_head, section_head_title, image_url)
+-- 1. LAB SECTIONS SEED
+INSERT INTO public.lab_sections (id, title, subtitle, description, equipments, section_head, section_head_title, image_url)
 VALUES
 (
     'software-cell',
     'Software Cell',
     'High Performance Workstations & Prototyping Suites',
     'Equipped with high-performance computing systems hosting industry-standard tools including AutoCAD, Autodesk Fusion 360, VS Code, SolidWorks, and simulation frameworks.',
-    '["High Performance Workstations", "AutoCAD Studio", "Autodesk Fusion 360", "VS Code IDE", "MATLAB & Simulink", "ANSYS Simulation Suite"]'::jsonb,
+    '["Intel i9 RTX Workstations", "AutoCAD Studio", "Autodesk Fusion 360", "VS Code IDE", "MATLAB & Simulink", "ANSYS Simulation Suite"]'::jsonb,
     'Prof. A. K. Sharma',
     'Head of Software Prototyping Cell',
     'https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=1200&q=80'
@@ -56,67 +56,165 @@ VALUES
     'Head of Manufacturing & Fabrication',
     'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=1200&q=80'
 )
-ON CONFLICT (slug) DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  subtitle = EXCLUDED.subtitle,
+  description = EXCLUDED.description,
+  equipments = EXCLUDED.equipments,
+  section_head = EXCLUDED.section_head,
+  section_head_title = EXCLUDED.section_head_title,
+  image_url = EXCLUDED.image_url;
 
--- 2. PROJECTS SEED
-INSERT INTO public.projects (title, description, full_detail, leader_name, leader_email, team_members, cover_image, tech_stack)
+-- 2. EVENTS SEED
+INSERT INTO public.events (id, title, category, description, date, trainer, seats, status)
 VALUES
 (
-    'Autonomous AI Inspection Rover',
-    '6-wheel rocker-bogie rover built with 6-Axis Robotic arm concepts and PCB design for industrial structural inspection.',
-    'Developed at the AICTE IDEA LAB TGPCET, this autonomous rover utilizes ROS2, OpenCV, custom PCB motor controllers, and 3D printed structural mounts. Designed for hazardous pipe inspection and industrial monitoring.',
-    'Darshan (Chief Student Innovator)',
-    'darshan@tgpcet.ac.in',
-    '[{"name": "Darshan", "role": "Project Lead & AI Engineer"}, {"name": "Aarav Mehta", "role": "PCB & Hardware Lead"}, {"name": "Priya Sharma", "role": "CAD Designer"}]'::jsonb,
-    'https://images.unsplash.com/photo-1563770660941-20978e770fa3?auto=format&fit=crop&w=1200&q=80',
-    '["ROS2", "Python", "Fusion 360", "CNC PCB Machine", "3D Printing", "OpenCV"]'::jsonb
+    'ev-1',
+    '3D Printing & Additive Manufacturing Masterclass',
+    'Training',
+    'Hands-on SLA resin and FDM 3D printing workshop covering slicer optimization and nozzle maintenance.',
+    'August 15, 2026',
+    'Dr. Neeraj Waijode',
+    '30 Seats',
+    'Open for Registration'
 ),
 (
+    'ev-2',
+    '6-Axis Industrial Robotic Arm Trajectory Hackathon',
+    'Workshop',
+    'Learn robotic kinematics, motor payload balancing, and trajectory control on the industrial robotic arm.',
+    'August 22, 2026',
+    'Prof. M. B. Patil',
+    '20 Seats',
+    'Open for Registration'
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- 3. LAB INCHARGE SEED
+INSERT INTO public.lab_incharge (id, name, title, badge, message, photo_url)
+VALUES
+(
+    'incharge-main',
+    'Dr. Neeraj Waijode',
+    'Head & Coordinator, AICTE IDEA LAB • TGPCET',
+    'LAB INCHARGE & SUPERADMIN',
+    '"Our mission is to bridge the gap between academic theory and physical hardware prototyping. We welcome all students to leverage our 3D printers, CNC PCB machines, laser cutters, and 6-axis robotic arms."',
+    'https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=600&q=80'
+)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  title = EXCLUDED.title,
+  badge = EXCLUDED.badge,
+  message = EXCLUDED.message,
+  photo_url = EXCLUDED.photo_url;
+
+-- 4. FACULTY MEMBERS SEED
+INSERT INTO public.faculty_members (id, name, role, dept, photo_url, display_order)
+VALUES
+('f1', 'Dr. Neeraj Waijode', 'Incharge, AICTE IDEA LAB', 'Mechanical Engineering', 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=600&q=80', 1),
+('f2', 'Prof. A. K. Sharma', 'Section Head', 'Software Cell', 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=600&q=80', 2),
+('f3', 'Dr. R. V. Deshmukh', 'Section Head', 'IoT & PCB Design', 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=600&q=80', 3),
+('f4', 'Prof. S. N. Kulkarni', 'Section Head', '3D Printing & Prototyping', 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=600&q=80', 4),
+('f5', 'Prof. M. B. Patil', 'Section Head', 'Robotics & Automation', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80', 5),
+('f6', 'Prof. V. P. Joshi', 'Section Head', 'Machining & Fabrication', 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=600&q=80', 6)
+ON CONFLICT (id) DO NOTHING;
+
+-- 5. CHAPTER MEMBERS SEED
+INSERT INTO public.chapter_members (id, name, role, branch, category, photo_url, linkedin_url, bio, display_order)
+VALUES
+('c1', 'Darshan', 'Chief Student Innovator', 'Computer Science & Engineering', 'leadership', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80', 'https://linkedin.com/in/darshan-drt', 'Pioneering student innovation, autonomous rover development, and leading student prototyping teams across IDEA LAB.', 1),
+('c2', 'Ananya Deshmukh', 'Head of Software Innovation', 'Artificial Intelligence & DS', 'leadership', 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=600&q=80', 'https://linkedin.com/in/ananya-d', 'Overseeing CAD/CAM simulation, full-stack web applications, and AI model integration.', 2),
+('c3', 'Aditya Kulkarni', 'Head of Hardware & Prototyping', 'Mechanical Engineering', 'leadership', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80', 'https://linkedin.com/in/aditya-k', 'Specializing in 3D Printing, SLA Resin post-curing, and CNC heavy metal fabrication.', 3),
+('c4', 'Saniya Khan', 'Event & Outreach Coordinator', 'Information Technology', 'member', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=600&q=80', 'https://linkedin.com/in/saniya-k', 'Managing hackathons, industrial training workshops, and inter-college student delegations.', 4)
+ON CONFLICT (id) DO NOTHING;
+
+-- 6. SITE CONTACT SEED
+INSERT INTO public.site_contact (id, email_primary, email_secondary, phone_primary, phone_secondary, address, instagram_handle, instagram_url, linkedin_handle, linkedin_url)
+VALUES
+(
+    'contact-main',
+    'idealab@tgpcet.com',
+    'support.idealab@tgpcet.com',
+    '+91 712 2810001',
+    '+91 9876543210',
+    'AICTE IDEA LAB, TGPCET Campus, Mohgaon, Wardha Road, Nagpur, Maharashtra - 441108',
+    '@idealab_tgpcet',
+    'https://instagram.com',
+    'LinkedIn',
+    'https://linkedin.com'
+)
+ON CONFLICT (id) DO UPDATE SET
+  email_primary = EXCLUDED.email_primary,
+  email_secondary = EXCLUDED.email_secondary,
+  phone_primary = EXCLUDED.phone_primary,
+  phone_secondary = EXCLUDED.phone_secondary,
+  address = EXCLUDED.address,
+  instagram_handle = EXCLUDED.instagram_handle,
+  instagram_url = EXCLUDED.instagram_url,
+  linkedin_handle = EXCLUDED.linkedin_handle,
+  linkedin_url = EXCLUDED.linkedin_url;
+
+-- 7. PROJECTS SEED
+INSERT INTO public.projects (id, title, project_type, status, team_name, description, full_detail, leader, leader_name, leader_branch, leader_email, leader_photo, image_url, cover_image, category, project_images, tech_stack, team_members, pdf_url, pdf_name, equipment_used)
+VALUES
+(
+    'proj-1',
+    'Autonomous AI Inspection Rover',
+    'team',
+    'running',
+    'IDEA Lab Innovators',
+    '6-wheel rocker-bogie rover built with 6-Axis Robotic arm concepts and PCB design for industrial structural inspection.',
+    'Developed at the AICTE IDEA LAB TGPCET, this autonomous rover utilizes ROS2, OpenCV, custom PCB motor controllers, and 3D printed structural mounts. Designed for hazardous pipe inspection and industrial monitoring.',
+    'Darshan',
+    'Darshan',
+    'Robotics & AI',
+    'darshan@tgpcet.ac.in',
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80',
+    'https://images.unsplash.com/photo-1563770660941-20978e770fa3?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1563770660941-20978e770fa3?auto=format&fit=crop&w=1200&q=80',
+    'Student Innovation',
+    '["https://images.unsplash.com/photo-1563770660941-20978e770fa3?auto=format&fit=crop&w=1200&q=80"]'::jsonb,
+    '["ROS2", "Python", "Fusion 360", "CNC PCB Machine", "3D Printing", "OpenCV"]'::jsonb,
+    '[{"name": "Darshan", "role": "Project Lead & AI Engineer"}, {"name": "Aarav Mehta", "role": "PCB & Hardware Lead"}, {"name": "Priya Sharma", "role": "CAD Designer"}]'::jsonb,
+    '',
+    '',
+    '3D Printer, PCB CNC, Oscilloscope'
+),
+(
+    'proj-2',
     'Smart IoT Agriculture Monitoring System',
+    'team',
+    'running',
+    'GreenTech Innovators',
     'Precision farming device fabricated with CNC PCB etching and wireless LoRa communication.',
     'Integrated soil moisture, thermal imaging, and automated fertigation system created in the IoT & PCB Cell. Features real-time cloud data visualization and smartphone telemetry.',
     'Neha Verma',
+    'Neha Verma',
+    'Electronics & Communication',
     'neha.v@tgpcet.ac.in',
-    '[{"name": "Neha Verma", "role": "IoT Engineer"}, {"name": "Rohan Gupta", "role": "Embedded C Developer"}]'::jsonb,
+    'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=600&q=80',
     'https://images.unsplash.com/photo-1586771107445-d3ca888129ff?auto=format&fit=crop&w=1200&q=80',
-    '["ESP32", "LoRaWAN", "AutoCAD PCB", "Supabase", "React Native"]'::jsonb
-),
-(
-    '6-DOF Robotic Arm Haptic Controller',
-    'Custom tele-operated haptic feedback glove controlling the 6-Axis Industrial Robotic Arm.',
-    'Allows intuitive manual remote manipulation of hazardous materials. Features custom 3D printed mechanical joints and strain-gauge force feedback sensors.',
-    'Vikram Singh',
-    'vikram.s@tgpcet.ac.in',
-    '[{"name": "Vikram Singh", "role": "Robotics Lead"}, {"name": "Tanvi Rao", "role": "Mechatronics Engineer"}]'::jsonb,
-    'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=1200&q=80',
-    ['6-Axis Arm', 'STM32', 'Fusion 360', 'Kinematics Solver']::jsonb
-);
+    'https://images.unsplash.com/photo-1586771107445-d3ca888129ff?auto=format&fit=crop&w=1200&q=80',
+    'Student Innovation',
+    '["https://images.unsplash.com/photo-1586771107445-d3ca888129ff?auto=format&fit=crop&w=1200&q=80"]'::jsonb,
+    '["ESP32", "LoRaWAN", "AutoCAD PCB", "Supabase", "React Native"]'::jsonb,
+    '[{"name": "Neha Verma", "role": "IoT Engineer"}, {"name": "Rohan Gupta", "role": "Embedded C Developer"}]'::jsonb,
+    '',
+    '',
+    'CNC IoT PCB Milling Machine, Soldering Station'
+)
+ON CONFLICT (id) DO NOTHING;
 
--- 3. GALLERY SEED
-INSERT INTO public.gallery (title, caption, image_url, category)
+-- 8. GALLERY SEED
+INSERT INTO public.gallery (id, title, caption, media_type, media_url, image_url, thumbnail_url, category)
 VALUES
-('IDEA LAB Inauguration Ceremony', 'AICTE IDEA LAB Inauguration at TGPCET Campus with Chief Guests and Management.', 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&q=80', 'Event'),
-('National Hackathon 2026 Prototyping Workshop', 'Students utilizing 3D printers and CNC PCB machines during 48-Hour Hackathon.', 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1200&q=80', 'Workshop'),
-('6-Axis Robotic Arm Live Demonstration', 'Dr. Neeraj Waijode presenting robotic automation capabilities to industrial delegates.', 'https://images.unsplash.com/photo-1581092335397-9583fe92d232?auto=format&fit=crop&w=1200&q=80', 'Industrial Visit'),
-('Laser Cutting & Metal Fabrication Demo', 'Hands-on training session on precision CO2 laser cutter.', 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=1200&q=80', 'Training');
+('gal-1', 'IDEA LAB Inauguration Ceremony', 'AICTE IDEA LAB Inauguration at TGPCET Campus with Chief Guests and Management.', 'photo', 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&q=80', 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&q=80', '', 'Event'),
+('gal-2', 'National Hackathon Prototyping Workshop', 'Students utilizing 3D printers and CNC PCB machines during 48-Hour Hackathon.', 'photo', 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1200&q=80', 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1200&q=80', '', 'Workshop'),
+('gal-3', '6-Axis Robotic Arm Live Demonstration', 'Dr. Neeraj Waijode presenting robotic automation capabilities to industrial delegates.', 'photo', 'https://images.unsplash.com/photo-1581092335397-9583fe92d232?auto=format&fit=crop&w=1200&q=80', 'https://images.unsplash.com/photo-1581092335397-9583fe92d232?auto=format&fit=crop&w=1200&q=80', '', 'Industrial Visit')
+ON CONFLICT (id) DO NOTHING;
 
--- 4. STUDENT INNOVATION CHAPTER SEED
-INSERT INTO public.chapter_members (name, role, photo_url, linkedin_url, display_order)
+-- 9. NOTIFICATIONS SEED
+INSERT INTO public.notifications (title, message, type)
 VALUES
-('Darshan', 'Chief Student Innovator', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80', 'https://linkedin.com/in/darshan-drt', 1),
-('Ananya Deshmukh', 'Head of Software Innovation', 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=600&q=80', 'https://linkedin.com/in/ananya-d', 2),
-('Aditya Kulkarni', 'Head of Hardware & Prototyping', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80', 'https://linkedin.com/in/aditya-k', 3),
-('Saniya Khan', 'Event & Outreach Coordinator', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=600&q=80', 'https://linkedin.com/in/saniya-k', 4);
-
--- 5. APP UPDATES SEED
-INSERT INTO public.app_updates (title, content, tag)
-VALUES
-('Registration Open for Summer Prototyping Boot Camp 2026', 'Learn AutoCAD, 3D printing, and CNC machining in a 2-week hands-on intensive course at IDEA LAB.', 'Event'),
-('New 6-Axis Robotic Arm Workshop Announced', 'Dr. Neeraj Waijode will conduct an interactive masterclass on industrial robotics on August 15, 2026.', 'Training'),
-('Congratulations Team Rover for Winning AICTE National Innovation Award', 'Our Chief Student Innovator Darshan and team won 1st prize for Autonomous Inspection Rover!', 'Achievement');
-
--- 6. BROADCAST NOTIFICATIONS SEED
-INSERT INTO public.notifications (user_id, title, message, type)
-VALUES
-(NULL, 'Welcome to AICTE IDEA LAB TGPCET Platform', 'Explore our 5 state-of-the-art sections, apply for training programs, and submit your project proposals.', 'general'),
-(NULL, 'Call for Student Project Applications 2026', 'Submit your project proposal PDF under the Apply section to get lab access, guidance, and funding support.', 'application');
+('Welcome to AICTE IDEA LAB TGPCET Platform', 'Explore our 5 state-of-the-art sections, apply for training programs, and submit your project proposals.', 'general'),
+('Call for Student Project Applications 2026', 'Submit your project proposal PDF under the Apply section to get lab access, guidance, and funding support.', 'application');

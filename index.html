@@ -204,22 +204,22 @@
 
       <!-- QUICK METRICS -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div class="glass-card glass-card-hover p-5 rounded-3xl border border-sky-500/15">
+        <a href="#sections" class="glass-card glass-card-hover p-5 rounded-3xl border border-sky-500/15 block transition-all duration-300 hover:scale-105">
           <span class="text-xs font-medium text-slate-500 dark:text-slate-400">Core Sections</span>
           <p class="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">5 Technical Labs</p>
-        </div>
-        <div class="glass-card glass-card-hover p-5 rounded-3xl border border-sky-500/15">
+        </a>
+        <a href="#equipment" class="glass-card glass-card-hover p-5 rounded-3xl border border-sky-500/15 block transition-all duration-300 hover:scale-105">
           <span class="text-xs font-medium text-slate-500 dark:text-slate-400">Prototyping Equipment</span>
           <p class="text-2xl font-extrabold text-sky-500 mt-1">15+ Machines</p>
-        </div>
-        <div class="glass-card glass-card-hover p-5 rounded-3xl border border-sky-500/15">
+        </a>
+        <a href="#projects" class="glass-card glass-card-hover p-5 rounded-3xl border border-sky-500/15 block transition-all duration-300 hover:scale-105">
           <span class="text-xs font-medium text-slate-500 dark:text-slate-400">Student Projects</span>
           <p class="text-2xl font-extrabold text-amber-500 mt-1">50+ Built</p>
-        </div>
-        <div class="glass-card glass-card-hover p-5 rounded-3xl border border-sky-500/15">
+        </a>
+        <a href="#incharge" class="glass-card glass-card-hover p-5 rounded-3xl border border-sky-500/15 block transition-all duration-300 hover:scale-105">
           <span class="text-xs font-medium text-slate-500 dark:text-slate-400">Lab Incharge</span>
           <p class="text-xl font-extrabold text-indigo-500 mt-1">Dr. Neeraj Waijode</p>
-        </div>
+        </a>
       </div>
 
       <!-- ABOUT IDEA LAB VISION & MISSION -->
@@ -256,15 +256,15 @@
         </div>
 
         <div class="flex space-x-4 overflow-x-auto pb-4 no-scrollbar">
-          <div class="w-80 shrink-0 rounded-3xl overflow-hidden glass-card border border-sky-500/20">
+          <div onclick="navigateTo('gallery')" class="w-80 shrink-0 rounded-3xl overflow-hidden glass-card border border-sky-500/20 cursor-pointer">
             <img src="https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80" class="w-full h-44 object-cover">
             <div class="p-3"><p class="text-xs font-bold">3D Printing & Additive Manufacturing Studio</p></div>
           </div>
-          <div class="w-80 shrink-0 rounded-3xl overflow-hidden glass-card border border-sky-500/20">
+          <div onclick="navigateTo('gallery')" class="w-80 shrink-0 rounded-3xl overflow-hidden glass-card border border-sky-500/20 cursor-pointer">
             <img src="https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=800&q=80" class="w-full h-44 object-cover">
             <div class="p-3"><p class="text-xs font-bold">6-Axis Industrial Robotic Arm Workstation</p></div>
           </div>
-          <div class="w-80 shrink-0 rounded-3xl overflow-hidden glass-card border border-sky-500/20">
+          <div onclick="navigateTo('gallery')" class="w-80 shrink-0 rounded-3xl overflow-hidden glass-card border border-sky-500/20 cursor-pointer">
             <img src="https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80" class="w-full h-44 object-cover">
             <div class="p-3"><p class="text-xs font-bold">CNC PCB Etching & IoT Circuit Design</p></div>
           </div>
@@ -746,15 +746,8 @@
         <h3 class="font-bold">Notifications</h3>
         <button onclick="toggleNotifModal()" class="text-sm">✕</button>
       </div>
-      <div class="p-4 space-y-3 text-xs">
-        <div class="p-3 rounded-2xl bg-sky-50 dark:bg-sky-950/40">
-          <p class="font-bold">Welcome to AICTE IDEA LAB TGPCET</p>
-          <p class="text-slate-500 mt-1">Explore our 5 sections and submit project proposals.</p>
-        </div>
-        <div class="p-3 rounded-2xl bg-sky-50 dark:bg-sky-950/40">
-          <p class="font-bold">Message from Lab Incharge Dr. Neeraj Waijode</p>
-          <p class="text-slate-500 mt-1">Prototyping equipment calibration complete.</p>
-        </div>
+      <div class="p-8 text-center text-slate-500 dark:text-slate-400">
+        <p class="text-sm font-medium">No new notifications</p>
       </div>
     </div>
   </div>

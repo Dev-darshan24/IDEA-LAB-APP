@@ -28,28 +28,12 @@ import {
   KeyRound,
 } from 'lucide-react';
 
-const INITIAL_NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: 'n1',
-    title: 'Welcome to AICTE IDEA LAB TGPCET',
-    message: 'Explore our 5 technical sections, submit project proposals, and register for training workshops.',
-    type: 'general',
-    is_read: false,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: 'n2',
-    title: 'Message from Lab Incharge Dr. Neeraj Waijode',
-    message: 'Prototyping equipment calibration complete. All 5 sections are operational for innovation teams.',
-    type: 'incharge',
-    is_read: false,
-    created_at: new Date().toISOString(),
-  },
-];
+const INITIAL_NOTIFICATIONS: NotificationItem[] = [];
 
 export const Navbar: React.FC = () => {
   const pathname = usePathname();
   const { user, logout, isSuperAdmin1, isSuperAdmin2 } = useAuth();
+  const isSuperAdmin = isSuperAdmin1 || isSuperAdmin2;
   const { theme, toggleTheme } = useTheme();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -79,16 +63,15 @@ export const Navbar: React.FC = () => {
           
           {/* LOGO & BRANDING */}
           <Link href="/" className="flex items-center space-x-2.5 group shrink-0">
-            {/* TGPCET LOGO */}
-            <div className="h-9 px-2 py-0.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs flex items-center justify-center group-hover:scale-105 transition-transform">
-              <img src="/tgpcet_logo.png" alt="TGPCET Logo" className="h-full object-contain" />
-            </div>
-
-            <span className="text-slate-300 dark:text-slate-700 font-light text-sm">|</span>
-
-            {/* IDEA LAB LOGO */}
-            <div className="h-9 px-2 py-0.5 bg-white dark:bg-slate-800 rounded-xl border border-sky-500/20 shadow-xs flex items-center justify-center group-hover:scale-105 transition-transform">
-              <img src="/idea_lab_logo.png" alt="IDEA LAB Logo" className="h-full object-contain" />
+            {/* UNIFIED LOGO BADGE */}
+            <div className="flex items-center space-x-1.5 p-1.5 bg-white rounded-2xl border border-slate-200 dark:border-slate-700/80 shadow-sm group-hover:scale-105 transition-transform">
+              <div className="h-7 px-1 flex items-center justify-center">
+                <img src="/tgpcet_logo.png" alt="TGPCET Logo" className="h-full object-contain" />
+              </div>
+              <span className="text-slate-300 font-light text-xs">|</span>
+              <div className="h-7 px-1 flex items-center justify-center">
+                <img src="/idea_lab_logo.png" alt="IDEA LAB Logo" className="h-full object-contain" />
+              </div>
             </div>
 
             <div className="hidden sm:flex flex-col text-left leading-tight">
@@ -126,20 +109,23 @@ export const Navbar: React.FC = () => {
           {/* RIGHT ACTION BUTTONS */}
           <div className="flex items-center space-x-2 shrink-0">
             
-            {/* APPLY QUICK BUTTON */}
-            <Link
-              href="/apply"
-              className="hidden sm:flex items-center space-x-1.5 px-4 py-2 rounded-full text-xs font-bold text-white bg-gradient-to-r from-cyan-500 via-sky-600 to-indigo-600 hover:from-cyan-600 hover:to-indigo-700 shadow-md shadow-sky-500/20 hover:scale-105 active:scale-95 transition-all whitespace-nowrap"
-            >
-              <Send className="w-3.5 h-3.5" />
-              <span>Apply</span>
-            </Link>
+            {/* APPLY QUICK BUTTON (USERS ONLY) */}
+            {!isSuperAdmin && (
+              <Link
+                href="/apply"
+                className="hidden sm:flex items-center space-x-1.5 px-4 py-2 rounded-full text-xs font-bold text-white bg-gradient-to-r from-cyan-500 via-sky-600 to-indigo-600 hover:from-cyan-600 hover:to-indigo-700 shadow-md shadow-sky-500/20 hover:scale-105 active:scale-95 transition-all whitespace-nowrap"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>Apply</span>
+              </Link>
+            )}
 
             {/* THEME TOGGLE */}
             <button
               onClick={toggleTheme}
               aria-label="Toggle dark mode"
-              className="p-2.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-sky-100 dark:hover:bg-slate-700 transition"
+              title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
+              className="p-2.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-sky-100 dark:hover:bg-slate-700 transition flex items-center justify-center cursor-pointer select-none active:scale-95 shadow-sm"
             >
               {theme === 'light' ? (
                 <Moon className="w-4 h-4 text-slate-700" />
@@ -186,7 +172,7 @@ export const Navbar: React.FC = () => {
                         {user.email}
                       </p>
                       <span className="inline-block mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300">
-                        {isSuperAdmin1 ? 'SUPERADMIN 1 (INCHARGE)' : isSuperAdmin2 ? 'SUPERADMIN 2 (DEVELOPER)' : 'USER'}
+                        {isSuperAdmin1 ? 'LAB INCHARGE' : isSuperAdmin2 ? 'LEAD DEVELOPER' : 'USER'}
                       </span>
                     </div>
 
@@ -293,6 +279,26 @@ export const Navbar: React.FC = () => {
               );
             })}
 
+            {/* MOBILE THEME TOGGLE BUTTON */}
+            <button
+              onClick={() => {
+                toggleTheme();
+              }}
+              className="flex items-center justify-between w-full px-4 py-3 rounded-2xl text-sm font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-sky-50 dark:hover:bg-slate-700 transition"
+            >
+              <div className="flex items-center space-x-3">
+                {theme === 'light' ? (
+                  <Moon className="w-4 h-4 text-slate-700" />
+                ) : (
+                  <Sun className="w-4 h-4 text-amber-400" />
+                )}
+                <span>Theme: {theme === 'light' ? 'Light Mode' : 'Dark Mode'}</span>
+              </div>
+              <span className="text-xs font-bold text-sky-600 dark:text-cyan-400">
+                Switch to {theme === 'light' ? 'Dark' : 'Light'}
+              </span>
+            </button>
+
             {isSuperAdmin1 && (
               <Link
                 href="/admin/incharge"
@@ -300,7 +306,7 @@ export const Navbar: React.FC = () => {
                 className="flex items-center space-x-3 px-4 py-3 rounded-2xl text-sm font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40"
               >
                 <ShieldAlert className="w-4 h-4 text-indigo-500" />
-                <span>SuperAdmin 1 (Incharge Console)</span>
+                <span>Incharge Console</span>
               </Link>
             )}
 
@@ -311,20 +317,22 @@ export const Navbar: React.FC = () => {
                 className="flex items-center space-x-3 px-4 py-3 rounded-2xl text-sm font-bold text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/40"
               >
                 <KeyRound className="w-4 h-4 text-cyan-500" />
-                <span>SuperAdmin 2 (Developer Console)</span>
+                <span>Developer Console</span>
               </Link>
             )}
 
-            <div className="pt-2">
-              <Link
-                href="/apply"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center justify-center space-x-2 w-full py-3 rounded-2xl text-sm font-bold text-white bg-gradient-to-r from-sky-600 to-indigo-600 shadow-lg"
-              >
-                <Send className="w-4 h-4" />
-                <span>Apply for Project / Event</span>
-              </Link>
-            </div>
+            {!isSuperAdmin && (
+              <div className="pt-2">
+                <Link
+                  href="/apply"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-center space-x-2 w-full py-3 rounded-2xl text-sm font-bold text-white bg-gradient-to-r from-sky-600 to-indigo-600 shadow-lg"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>Apply for Project / Event</span>
+                </Link>
+              </div>
+            )}
           </div>
         )}
       </header>

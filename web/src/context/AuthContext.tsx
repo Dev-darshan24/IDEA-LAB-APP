@@ -10,10 +10,10 @@ export interface RegisteredAccount extends UserProfile {
   email_verified?: boolean;
 }
 
-const SUPERADMIN_1_EMAIL = (process.env.SUPERADMIN1_EMAIL || process.env.NEXT_PUBLIC_SUPERADMIN_1_EMAIL || 'incharge@tgpcet.ac.in').toLowerCase();
+const SUPERADMIN_1_EMAIL = (process.env.SUPERADMIN1_EMAIL || process.env.NEXT_PUBLIC_SUPERADMIN_1_EMAIL || 'incharge@tgpcet.com').toLowerCase();
 const SUPERADMIN_1_PASSWORD = process.env.SUPERADMIN1_PASSWORD || process.env.NEXT_PUBLIC_SUPERADMIN_1_PASSWORD || 'demo123';
 
-const SUPERADMIN_2_EMAIL = (process.env.SUPERADMIN2_EMAIL || process.env.NEXT_PUBLIC_SUPERADMIN_2_EMAIL || 'darshan@tgpcet.ac.in').toLowerCase();
+const SUPERADMIN_2_EMAIL = (process.env.SUPERADMIN2_EMAIL || process.env.NEXT_PUBLIC_SUPERADMIN_2_EMAIL || 'darshan@tgpcet.com').toLowerCase();
 const SUPERADMIN_2_PASSWORD = process.env.SUPERADMIN2_PASSWORD || process.env.NEXT_PUBLIC_SUPERADMIN_2_PASSWORD || 'demo123';
 
 interface AuthContextType {
@@ -25,8 +25,8 @@ interface AuthContextType {
   sendOtp: (email: string, purpose?: 'registration' | 'forgot_password' | 'change_password') => Promise<{ success: boolean; message: string; devOtp?: string }>;
   verifyOtp: (email: string, otp: string, purpose?: string) => Promise<{ success: boolean; message: string }>;
   registerUser: (data: Partial<RegisteredAccount>) => Promise<{ success: boolean; message: string; userId?: string; registeredUser?: RegisteredAccount }>;
-  resetPasswordWithOtp: (email: string, otp: string, newPass: string) => Promise<{ success: boolean; message: string }>;
-  changePasswordWithOtp: (currentPass: string, otp: string, newPass: string) => Promise<{ success: boolean; message: string }>;
+  resetPasswordWithOtp: (email: string, otp: string, newPass: string, alreadyVerified?: boolean) => Promise<{ success: boolean; message: string }>;
+  changePasswordWithOtp: (currentPass: string, otp: string, newPass: string, alreadyVerified?: boolean) => Promise<{ success: boolean; message: string }>;
   resendVerificationEmail: (email: string) => Promise<{ success: boolean; message: string }>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<UserProfile>) => Promise<boolean>;
@@ -83,19 +83,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     fetch('/api/auth/init-superadmins', { method: 'POST' }).catch(() => {});
   }, []);
 
-  // Load registered users registry & session on mount
+  // Load registered users registry & session on mount, and sync all profiles to Supabase
   useEffect(() => {
+    let currentRegistry = DEFAULT_PRESETS;
     try {
       const storedRegistry = localStorage.getItem('idea_lab_registered_users');
       if (storedRegistry) {
         const parsed = JSON.parse(storedRegistry);
-        setRegisteredUsers({ ...DEFAULT_PRESETS, ...parsed });
+        currentRegistry = { ...DEFAULT_PRESETS, ...parsed };
+        setRegisteredUsers(currentRegistry);
       } else {
         localStorage.setItem('idea_lab_registered_users', JSON.stringify(DEFAULT_PRESETS));
       }
     } catch (e) {
       console.error('Error reading registered users registry:', e);
     }
+
+    // Immediately sync all registered accounts (including Jonny Verse) to Supabase profiles table
+    const syncAllUsersToSupabase = async () => {
+      try {
+        const userEmails = Object.keys(currentRegistry);
+        for (const email of userEmails) {
+          const account = currentRegistry[email];
+          if (account) {
+            await fetch('/api/users', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(account),
+            }).catch(() => {});
+          }
+        }
+        console.log('[AuthContext] Successfully synced all user accounts to Supabase profiles table!');
+      } catch (e) {
+        console.error('[AuthContext] Error syncing accounts to Supabase:', e);
+      }
+    };
+    syncAllUsersToSupabase();
 
     // Check saved active session
     const savedUser = localStorage.getItem('idea_lab_user');
@@ -269,6 +292,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updated = { ...registeredUsers, [cleanEmail]: newUser };
     persistRegisteredUsers(updated);
 
+    // Sync directly to Supabase profiles database table
+    try {
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newUser),
+      });
+      const resData = await res.json();
+      if (resData.success) {
+        console.log('[AuthContext] User registered and stored in Supabase profiles table:', resData.user);
+      }
+    } catch (e) {
+      console.error('[AuthContext] Error saving registered user to Supabase:', e);
+    }
+
     return {
       success: true,
       message: 'Registration complete! Your account & ID have been created successfully.',
@@ -278,13 +316,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // 6. FORGOT PASSWORD: SET NEW PASSWORD WITH OTP
-  const resetPasswordWithOtp = async (email: string, otp: string, newPass: string): Promise<{ success: boolean; message: string }> => {
+  const resetPasswordWithOtp = async (email: string, otp: string, newPass: string, alreadyVerified = false): Promise<{ success: boolean; message: string }> => {
     const cleanEmail = email.toLowerCase().trim();
 
-    // Validate OTP
-    const otpRes = await verifyOtp(cleanEmail, otp, 'forgot_password');
-    if (!otpRes.success) {
-      return otpRes;
+    // Validate OTP if not already verified in previous step
+    if (!alreadyVerified) {
+      const otpRes = await verifyOtp(cleanEmail, otp, 'forgot_password');
+      if (!otpRes.success) {
+        return otpRes;
+      }
     }
 
     // Validate Password Strength
@@ -315,7 +355,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // 7. CHANGE PASSWORD INSIDE SETTINGS (Current Pass -> Verify -> OTP -> Enter New Pass -> Invalidate -> Logout)
-  const changePasswordWithOtp = async (currentPass: string, otp: string, newPass: string): Promise<{ success: boolean; message: string }> => {
+  const changePasswordWithOtp = async (currentPass: string, otp: string, newPass: string, alreadyVerified = false): Promise<{ success: boolean; message: string }> => {
     if (!user || !user.email) {
       return { success: false, message: 'You must be logged in to change your password.' };
     }
@@ -328,10 +368,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, message: 'Current password is incorrect! Please verify your current password.' };
     }
 
-    // Verify OTP
-    const otpRes = await verifyOtp(cleanEmail, otp, 'change_password');
-    if (!otpRes.success) {
-      return otpRes;
+    // Verify OTP if not already verified in previous step
+    if (!alreadyVerified) {
+      const otpRes = await verifyOtp(cleanEmail, otp, 'change_password');
+      if (!otpRes.success) {
+        return otpRes;
+      }
     }
 
     // Validate Password Strength
@@ -386,11 +428,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (oldEmailKey !== newEmailKey && newEmailKey) {
         delete updatedRegistry[oldEmailKey];
       }
-      updatedRegistry[newEmailKey || oldEmailKey] = {
+      const updatedAccount = {
         ...existingAccount,
         ...updated,
       };
+      updatedRegistry[newEmailKey || oldEmailKey] = updatedAccount;
       persistRegisteredUsers(updatedRegistry);
+
+      // Push updated profile to Supabase profiles database table
+      try {
+        fetch('/api/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedAccount),
+        }).catch(() => {});
+      } catch (e) {}
     }
     return true;
   };

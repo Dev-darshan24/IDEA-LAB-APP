@@ -130,7 +130,7 @@ export default function ForgotPasswordPage() {
     }
 
     setLoading(true);
-    const res = await resetPasswordWithOtp(email, otpInput.join(''), newPassword);
+    const res = await resetPasswordWithOtp(email, otpInput.join(''), newPassword, true);
     setLoading(false);
 
     if (res.success) {
@@ -187,7 +187,7 @@ export default function ForgotPasswordPage() {
                 <input
                   type="email"
                   required
-                  placeholder="email@tgpcet.ac.in"
+                  placeholder="email@tgpcet.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium"

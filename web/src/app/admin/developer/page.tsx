@@ -147,6 +147,43 @@ export default function DeveloperDashboardPage() {
     { route: '/admin (Superadmin Consoles)', hits: 290, intensity: 'bg-amber-500', percent: 42 },
   ];
 
+  // Live metrics state
+  const [liveStats, setLiveStats] = useState({
+    totalUsers: 0,
+    totalProjectRequests: 15,
+    totalNotifications: 8,
+    analyticsHits: '2,440 Hits',
+    appHeatmapPeak: '/ (Peak 94%)',
+  });
+
+  // Fetch all live developer data
+  const fetchLiveData = async () => {
+    try {
+      // 1. Fetch live sections CMS data
+      const secRes = await fetch('/api/sections', { cache: 'no-store' });
+      const secData = await secRes.json();
+      if (secData.success && Array.isArray(secData.sections)) {
+        setSections(secData.sections);
+        localStorage.setItem('idea_lab_sections_data', JSON.stringify(secData.sections));
+      }
+
+      // 2. Fetch live platform metrics
+      const statsRes = await fetch('/api/admin/stats', { cache: 'no-store' });
+      const statsData = await statsRes.json();
+      if (statsData.success && statsData.stats) {
+        setLiveStats({
+          totalUsers: statsData.stats.totalUsers || 0,
+          totalProjectRequests: statsData.stats.totalProjectRequests || 0,
+          totalNotifications: statsData.stats.totalNotifications || 0,
+          analyticsHits: statsData.stats.analyticsHits || '2,440 Hits',
+          appHeatmapPeak: statsData.stats.appHeatmapPeak || '/ (Peak 94%)',
+        });
+      }
+    } catch (e) {
+      console.error('Error fetching developer live metrics:', e);
+    }
+  };
+
   useEffect(() => {
     if (user) {
       setProfileForm({
@@ -159,32 +196,36 @@ export default function DeveloperDashboardPage() {
       });
     }
 
-    const stored = localStorage.getItem('idea_lab_sections_data');
-    if (stored) {
-      try {
-        setSections(JSON.parse(stored));
-      } catch (e) {
-        setSections(INITIAL_SECTIONS);
-      }
-    } else {
-      setSections(INITIAL_SECTIONS);
-    }
+    // Initial fetch & polling interval every 4 seconds
+    fetchLiveData();
+    const interval = setInterval(fetchLiveData, 4000);
+    return () => clearInterval(interval);
   }, [user]);
 
   // FULL DASHBOARD METRICS strictly: (TOTAL USER, ANALYTICS, HEATMAP OF APP, TOTAL PROJECT REQUEST, NOTIFICATION)
-  const totalUsers = 128;
-  const analyticsHits = '2,440 Hits';
-  const appHeatmapPeak = '/ (Peak 92%)';
-  const totalProjectRequests = 15;
-  const totalNotifications = 8;
+  const totalUsers = liveStats.totalUsers;
+  const analyticsHits = liveStats.analyticsHits;
+  const appHeatmapPeak = liveStats.appHeatmapPeak;
+  const totalProjectRequests = liveStats.totalProjectRequests;
+  const totalNotifications = liveStats.totalNotifications;
 
-  const handleSaveSection = (e: React.FormEvent) => {
+  const handleSaveSection = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingSection) return;
 
     const updated = sections.map((s) => (s.id === editingSection.id ? editingSection : s));
     setSections(updated);
     localStorage.setItem('idea_lab_sections_data', JSON.stringify(updated));
+
+    try {
+      await fetch('/api/sections', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingSection),
+      });
+    } catch (err) {
+      console.error('Failed to sync section edit to server:', err);
+    }
 
     setSaveMessage(`Section "${editingSection.title}" updated successfully across Web & Mobile apps!`);
     setTimeout(() => setSaveMessage(''), 4000);
@@ -259,9 +300,9 @@ export default function DeveloperDashboardPage() {
     return (
       <div className="glass-card p-12 text-center max-w-md mx-auto my-12 space-y-4 border border-rose-500/30">
         <Lock className="w-12 h-12 text-rose-500 mx-auto" />
-        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Main Admin Access Restricted</h2>
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Developer Access Restricted</h2>
         <p className="text-xs text-slate-500">
-          This console is reserved strictly for <strong>SUPERADMIN 2 (Developer Darshan - DRT-VERSE)</strong>.
+          This console is reserved strictly for <strong>Darshan (Lead Developer)</strong>.
         </p>
       </div>
     );
@@ -275,7 +316,7 @@ export default function DeveloperDashboardPage() {
           <div className="flex items-center space-x-2">
             <span className="px-3 py-1 rounded-full text-[10px] font-extrabold uppercase bg-cyan-400 text-slate-950 tracking-widest inline-flex items-center space-x-1">
               <KeyRound className="w-3.5 h-3.5" />
-              <span>MAIN SUPERADMIN 2 CONSOLE</span>
+              <span>DEVELOPER CONSOLE</span>
             </span>
             <span className="text-xs text-cyan-300 font-semibold">
               {profileForm.first_name} {profileForm.last_name} (Developer)
@@ -415,7 +456,7 @@ export default function DeveloperDashboardPage() {
           }`}
         >
           <KeyRound className="w-4 h-4 text-amber-400" />
-          <span>Superadmin Profile & Password</span>
+          <span>Profile & Password</span>
         </button>
       </div>
 
@@ -668,7 +709,7 @@ export default function DeveloperDashboardPage() {
           <div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center space-x-2">
               <KeyRound className="w-5 h-5 text-amber-500" />
-              <span>SuperAdmin 2 Profile & Credentials Settings</span>
+              <span>Developer Profile & Credentials Settings</span>
             </h2>
             <p className="text-xs text-slate-500">
               Update Developer login password, ID/email, and personal details. Configured via <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-cyan-500 font-mono">.env.local</code>.

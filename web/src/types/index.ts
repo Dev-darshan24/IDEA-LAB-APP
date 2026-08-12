@@ -48,20 +48,28 @@ export interface Section {
 
 export interface TeamMember {
   name: string;
-  role: string;
+  role?: string;
+  branch?: string;
   avatar?: string;
 }
 
 export interface Project {
   id: string;
   title: string;
+  project_type?: 'individual' | 'team';
+  status?: 'running' | 'completed' | 'upcoming';
+  team_name?: string;
   description: string;
-  full_detail: string;
+  full_detail?: string;
   leader_name: string;
+  leader_branch?: string;
   leader_email?: string;
+  leader_photo?: string;
   team_members: TeamMember[];
   cover_image: string;
   project_images?: string[];
+  pdf_url?: string;
+  pdf_name?: string;
   tech_stack: string[];
   created_at: string;
 }
@@ -70,7 +78,10 @@ export interface GalleryItem {
   id: string;
   title: string;
   caption?: string;
-  image_url: string;
+  image_url: string; // compatibility with existing code
+  media_type?: 'photo' | 'video';
+  media_url?: string;
+  thumbnail_url?: string;
   category: string;
   created_at: string;
 }
@@ -79,8 +90,11 @@ export interface ChapterMember {
   id: string;
   name: string;
   role: string;
+  branch?: string;
+  category?: 'leadership' | 'member';
   photo_url: string;
   linkedin_url?: string;
+  bio?: string;
   display_order: number;
 }
 
@@ -117,4 +131,33 @@ export interface AppUpdate {
   content: string;
   tag: string;
   created_at: string;
+}
+
+export interface ContactDetails {
+  email_primary: string;
+  email_secondary?: string;
+  phone_primary: string;
+  phone_secondary?: string;
+  address: string;
+  instagram_handle?: string;
+  instagram_url?: string;
+  linkedin_handle?: string;
+  linkedin_url?: string;
+}
+
+export interface FacultyMember {
+  id: string;
+  name: string;
+  role: string;
+  dept: string;
+  photo_url?: string;
+  display_order: number;
+}
+
+export interface LabInchargeProfile {
+  name: string;
+  title: string;
+  badge?: string;
+  message?: string;
+  photo_url?: string;
 }

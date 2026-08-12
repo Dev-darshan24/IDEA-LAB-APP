@@ -1,9 +1,14 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 export const ThreeCanvasBanner: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -131,9 +136,9 @@ export const ThreeCanvasBanner: React.FC = () => {
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      cancelAnimationFrame(animationFrameId);
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
     };
-  }, []);
+  }, [mounted]);
 
   return (
     <div className="relative w-full h-[350px] overflow-hidden rounded-3xl bg-slate-950/20 border border-sky-500/20 my-6 shadow-2xl backdrop-blur-md">

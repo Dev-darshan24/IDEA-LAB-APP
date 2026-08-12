@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ThreeCanvasBanner } from '@/components/ThreeCanvasBanner';
 import { useAuth } from '@/context/AuthContext';
+import { GalleryItem, Project } from '@/types';
 import {
   Sparkles,
   ArrowRight,
@@ -31,7 +32,7 @@ const MAJOR_PROJECTS_PREVIEW = [
     title: 'Autonomous AI Inspection Rover',
     leader: 'Darshan (Chief Student Innovator)',
     category: 'Robotics & AI',
-    image: 'https://images.unsplash.com/photo-1563770660941-20978e770fa3?auto=format&fit=crop&w=800&q=80',
+    image: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=800&q=80',
     desc: '6-wheel rocker-bogie rover built with ROS2 and custom CNC-etched PCB motor drivers for hazardous inspection.',
   },
   {
@@ -61,8 +62,40 @@ const CAROUSEL_IMAGES = [
 ];
 
 export default function HomePage() {
-  const { user } = useAuth();
+  const { user, isSuperAdmin1, isSuperAdmin2 } = useAuth();
+  const isSuperAdmin = isSuperAdmin1 || isSuperAdmin2;
   const [activeTab, setActiveTab] = useState<'vision' | 'mission'>('vision');
+  const [projectCount, setProjectCount] = useState<number>(50);
+  const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
+  const [liveProjects, setLiveProjects] = useState<Project[]>([]);
+
+  useEffect(() => {
+    async function fetchLiveProjects() {
+      try {
+        const res = await fetch('/api/projects', { cache: 'no-store' });
+        const data = await res.json();
+        if (data.success && Array.isArray(data.projects)) {
+          setLiveProjects(data.projects);
+          setProjectCount(data.projects.length);
+        }
+      } catch (e) {
+        console.error('Error fetching live project count for stats:', e);
+      }
+    }
+    async function fetchLiveGallery() {
+      try {
+        const res = await fetch('/api/gallery', { cache: 'no-store' });
+        const data = await res.json();
+        if (data.success && Array.isArray(data.gallery) && data.gallery.length > 0) {
+          setGalleryItems(data.gallery);
+        }
+      } catch (e) {
+        console.error('Error fetching gallery items for home page:', e);
+      }
+    }
+    fetchLiveProjects();
+    fetchLiveGallery();
+  }, []);
 
   return (
     <div className="space-y-12 pb-12">
@@ -85,28 +118,30 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* QUICK LAB METRICS STATS */}
+      {/* QUICK LAB METRICS STATS WITH INTERACTIVE LINKS */}
       <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Core Sections', value: '5 Technical Labs', icon: Cpu, color: 'text-sky-500' },
-          { label: 'Prototyping Equipment', value: '15+ Machines', icon: Printer, color: 'text-cyan-500' },
-          { label: 'Student Projects', value: '50+ Built', icon: Award, color: 'text-amber-500' },
-          { label: 'Lab Incharge', value: 'Dr. Neeraj Waijode', icon: Users, color: 'text-indigo-500' },
+          { label: 'Core Sections', value: '5 Technical Labs', icon: Cpu, color: 'text-sky-500', href: '/sections' },
+          { label: 'Prototyping Equipment', value: '15+ Machines', icon: Printer, color: 'text-cyan-500', href: '/sections' },
+          { label: 'Student Projects', value: `${projectCount > 0 ? projectCount : 50}+ Built`, icon: Award, color: 'text-amber-500', href: '/projects' },
+          { label: 'Lab Incharge', value: 'Dr. Neeraj Waijode', icon: Users, color: 'text-indigo-500', href: '/about' },
         ].map((stat, idx) => {
           const Icon = stat.icon;
           return (
-            <div
+            <Link
               key={idx}
-              className="glass-card glass-card-hover p-5 rounded-3xl flex flex-col justify-between border border-sky-500/15"
+              href={stat.href}
+              className="glass-card glass-card-hover p-5 rounded-3xl flex flex-col justify-between border border-sky-500/15 group cursor-pointer transition-all duration-300 hover:scale-[1.03] hover:border-sky-500/40 shadow-sm hover:shadow-md"
             >
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{stat.label}</span>
-                <Icon className={`w-5 h-5 ${stat.color}`} />
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400 group-hover:text-sky-500 transition-colors">{stat.label}</span>
+                <Icon className={`w-5 h-5 ${stat.color} group-hover:scale-110 transition-transform`} />
               </div>
-              <p className="text-xl md:text-2xl font-extrabold text-slate-900 dark:text-white mt-2">
-                {stat.value}
+              <p className="text-xl md:text-2xl font-extrabold text-slate-900 dark:text-white mt-2 flex items-center justify-between">
+                <span>{stat.value}</span>
+                <ChevronRight className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
               </p>
-            </div>
+            </Link>
           );
         })}
       </section>
@@ -201,25 +236,36 @@ export default function HomePage() {
         </div>
 
         <div className="flex space-x-4 overflow-x-auto pb-4 scrollbar-thin scroll-smooth">
-          {CAROUSEL_IMAGES.map((item, idx) => (
-            <div
-              key={idx}
-              className="w-80 md:w-96 shrink-0 rounded-3xl overflow-hidden glass-card glass-card-hover border border-sky-500/20 group relative"
+          {galleryItems.slice(0, 5).map((item) => (
+            <Link
+              key={item.id}
+              href="/gallery"
+              className="w-80 md:w-96 shrink-0 rounded-3xl overflow-hidden glass-card glass-card-hover border border-sky-500/20 group relative block cursor-pointer"
             >
               <div className="h-48 relative overflow-hidden">
                 <img
-                  src={item.url}
-                  alt={item.caption}
+                  src={item.image_url || item.thumbnail_url || item.media_url}
+                  alt={item.title || item.caption}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                {item.media_type === 'video' && (
+                  <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-bold text-white flex items-center space-x-1 shadow-md">
+                    <span>🎬 VIDEO</span>
+                  </div>
+                )}
               </div>
               <div className="p-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md">
-                <p className="text-xs font-bold text-slate-800 dark:text-slate-100">
-                  {item.caption}
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-100 line-clamp-1 group-hover:text-sky-500 transition-colors">
+                  {item.title}
                 </p>
+                {item.caption && (
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
+                    {item.caption}
+                  </p>
+                )}
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </section>
@@ -242,36 +288,47 @@ export default function HomePage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {MAJOR_PROJECTS_PREVIEW.map((proj) => (
-            <div
+          {liveProjects.slice(0, 3).map((proj) => (
+            <Link
               key={proj.id}
-              className="glass-card glass-card-hover rounded-3xl overflow-hidden flex flex-col border border-sky-500/20"
+              href={`/projects?id=${proj.id}`}
+              className="glass-card glass-card-hover rounded-3xl overflow-hidden flex flex-col border border-sky-500/20 group cursor-pointer block"
             >
-              <div className="h-44 relative">
-                <img src={proj.image} alt={proj.title} className="w-full h-full object-cover" />
-                <span className="absolute top-3 left-3 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">
-                  {proj.category}
+              <div className="h-48 relative overflow-hidden">
+                <img
+                  src={
+                    proj.cover_image && !proj.cover_image.includes('photo-1563770660941')
+                      ? proj.cover_image
+                      : (proj.project_images?.[0] && !proj.project_images[0].includes('photo-1563770660941')
+                          ? proj.project_images[0]
+                          : 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1200&q=80')
+                  }
+                  alt={proj.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                <span className="absolute top-3 left-3 bg-black/70 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-md">
+                  {proj.tech_stack?.[0] || (proj.project_type === 'team' ? 'Team Project' : 'Student Innovation')}
                 </span>
               </div>
-              <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
+              <div className="p-5 flex-1 flex flex-col justify-between space-y-3 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md">
                 <div>
-                  <h4 className="font-bold text-base text-slate-900 dark:text-white">{proj.title}</h4>
+                  <h4 className="font-bold text-base text-slate-900 dark:text-white group-hover:text-sky-500 transition-colors line-clamp-1">
+                    {proj.title}
+                  </h4>
                   <p className="text-xs text-sky-600 dark:text-cyan-400 font-medium mt-0.5">
-                    Lead: {proj.leader}
+                    Lead: {proj.leader_name} {proj.leader_branch ? `(${proj.leader_branch})` : ''}
                   </p>
-                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-2 line-clamp-2">
-                    {proj.desc}
+                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-2 line-clamp-2 leading-relaxed">
+                    {proj.description || proj.full_detail}
                   </p>
                 </div>
-                <Link
-                  href="/projects"
-                  className="inline-flex items-center space-x-1 text-xs font-bold text-sky-600 dark:text-cyan-400 hover:underline pt-2"
-                >
+                <div className="inline-flex items-center space-x-1 text-xs font-bold text-sky-600 dark:text-cyan-400 group-hover:translate-x-1 transition-transform pt-2">
                   <span>View Builder & Specs</span>
                   <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
+                </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </section>
@@ -292,7 +349,7 @@ export default function HomePage() {
           </p>
           <div className="pt-2">
             <a
-              href="https://tgpcet.ac.in"
+              href="https://tgpcet.com"
               target="_blank"
               rel="noreferrer"
               className="text-xs font-bold text-sky-600 dark:text-cyan-400 hover:underline inline-flex items-center space-x-1"
@@ -370,13 +427,15 @@ export default function HomePage() {
             Apply to access 3D Printers, CNC PCB etching, 6-Axis Robotic Arm, and mentorship from Dr. Neeraj Waijode.
           </p>
         </div>
-        <Link
-          href="/apply"
-          className="px-6 py-3 rounded-full text-xs font-bold bg-white text-slate-900 hover:bg-slate-100 shadow-lg hover:scale-105 transition shrink-0 flex items-center space-x-2"
-        >
-          <Send className="w-4 h-4 text-sky-600" />
-          <span>Submit Project Proposal</span>
-        </Link>
+        {!isSuperAdmin && (
+          <Link
+            href="/apply"
+            className="px-6 py-3 rounded-full text-xs font-bold bg-white text-slate-900 hover:bg-slate-100 shadow-lg hover:scale-105 transition shrink-0 flex items-center space-x-2"
+          >
+            <Send className="w-4 h-4 text-sky-600" />
+            <span>Submit Project Proposal</span>
+          </Link>
+        )}
       </section>
 
     </div>

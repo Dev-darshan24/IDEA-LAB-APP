@@ -127,22 +127,23 @@ export default function SettingsPage() {
       </div>
 
       {/* 1. THEME SWITCH (LIGHT / DARK) */}
-      <div className="glass-card p-6 rounded-3xl border border-sky-500/20 flex items-center justify-between">
+      <div className="glass-card p-6 rounded-3xl border border-sky-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center space-x-3">
-          <div className="p-2.5 rounded-2xl bg-sky-100 dark:bg-slate-800 text-sky-600 dark:text-amber-400">
-            {theme === 'light' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          <div className="p-2.5 rounded-2xl bg-sky-100 dark:bg-slate-800 text-amber-500 dark:text-amber-400 shrink-0">
+            {theme === 'light' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5 text-sky-400" />}
           </div>
           <div>
             <h3 className="font-bold text-sm text-slate-900 dark:text-white">Appearance Theme</h3>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               Current mode: <strong className="uppercase text-sky-600 dark:text-cyan-400">{theme} Mode</strong>
             </p>
           </div>
         </div>
 
         <button
+          type="button"
           onClick={toggleTheme}
-          className="px-5 py-2.5 rounded-full text-xs font-bold text-white bg-gradient-to-r from-sky-600 to-indigo-600 hover:scale-105 transition shadow-md"
+          className="px-5 py-2.5 rounded-full text-xs font-bold text-white bg-gradient-to-r from-sky-600 to-indigo-600 hover:scale-105 active:scale-95 transition shadow-md cursor-pointer select-none"
         >
           Switch to {theme === 'light' ? 'Dark' : 'Light'} Mode
         </button>
@@ -285,15 +286,15 @@ export default function SettingsPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
           <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-sky-500/10">
-            <h4 className="font-bold text-slate-900 dark:text-white">Super Admin 1 (Incharge)</h4>
+            <h4 className="font-bold text-slate-900 dark:text-white">Lab Incharge</h4>
             <p className="text-slate-500 mt-1">Dr. Neeraj Waijode</p>
-            <p className="text-sky-600 dark:text-cyan-400 font-medium">incharge@tgpcet.ac.in</p>
+            <p className="text-sky-600 dark:text-cyan-400 font-medium">incharge@tgpcet.com</p>
           </div>
 
           <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-sky-500/10">
-            <h4 className="font-bold text-slate-900 dark:text-white">Super Admin 2 (Developer)</h4>
+            <h4 className="font-bold text-slate-900 dark:text-white">Lead Developer</h4>
             <p className="text-slate-500 mt-1">Darshan (DRT-VERSE HQ)</p>
-            <p className="text-sky-600 dark:text-cyan-400 font-medium">darshan@tgpcet.ac.in</p>
+            <p className="text-sky-600 dark:text-cyan-400 font-medium">darshan@tgpcet.com</p>
           </div>
         </div>
       </div>

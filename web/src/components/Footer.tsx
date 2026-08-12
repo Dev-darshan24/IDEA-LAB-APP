@@ -12,11 +12,14 @@ export const Footer: React.FC = () => {
         {/* BRAND COLUMN */}
         <div className="space-y-4 md:col-span-1">
           <div className="flex items-center space-x-3">
-            <div className="h-10 px-2 py-1 bg-white rounded-xl shadow-sm flex items-center justify-center">
-              <img src="/tgpcet_logo.png" alt="TGPCET Logo" className="h-full object-contain" />
-            </div>
-            <div className="h-10 px-2 py-1 bg-white rounded-xl shadow-sm flex items-center justify-center">
-              <img src="/idea_lab_logo.png" alt="IDEA LAB Logo" className="h-full object-contain" />
+            <div className="flex items-center space-x-1.5 p-1.5 bg-white rounded-2xl border border-slate-800 shadow-md">
+              <div className="h-8 px-1 flex items-center justify-center">
+                <img src="/tgpcet_logo.png" alt="TGPCET Logo" className="h-full object-contain" />
+              </div>
+              <span className="text-slate-300 font-light text-xs">|</span>
+              <div className="h-8 px-1 flex items-center justify-center">
+                <img src="/idea_lab_logo.png" alt="IDEA LAB Logo" className="h-full object-contain" />
+              </div>
             </div>
             <div>
               <h3 className="font-extrabold text-white text-base tracking-tight">AICTE IDEA LAB</h3>
@@ -66,7 +69,7 @@ export const Footer: React.FC = () => {
           </div>
           <div className="flex items-center space-x-2 text-xs text-slate-400">
             <Mail className="w-4 h-4 text-sky-400 shrink-0" />
-            <span>idealab@tgpcet.ac.in</span>
+            <span>idealab@tgpcet.com</span>
           </div>
           <div className="flex items-center space-x-2 text-xs text-slate-400">
             <Phone className="w-4 h-4 text-sky-400 shrink-0" />
@@ -80,7 +83,7 @@ export const Footer: React.FC = () => {
             <a href="https://linkedin.com" target="_blank" rel="noreferrer" className="p-2 rounded-full bg-slate-900 hover:bg-sky-600 text-slate-300 hover:text-white transition">
               <Linkedin className="w-4 h-4" />
             </a>
-            <a href="https://tgpcet.ac.in" target="_blank" rel="noreferrer" className="p-2 rounded-full bg-slate-900 hover:bg-sky-600 text-slate-300 hover:text-white transition">
+            <a href="https://tgpcet.com" target="_blank" rel="noreferrer" className="p-2 rounded-full bg-slate-900 hover:bg-sky-600 text-slate-300 hover:text-white transition">
               <Globe className="w-4 h-4" />
             </a>
           </div>

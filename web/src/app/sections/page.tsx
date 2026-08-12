@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
 import { Cpu, Printer, Bot, Wrench, Monitor, UserCheck, CheckCircle2, ChevronRight } from 'lucide-react';
 
 const SECTIONS_DATA = [
@@ -98,6 +99,9 @@ const SECTIONS_DATA = [
 ];
 
 export default function SectionsPage() {
+  const { isSuperAdmin1, isSuperAdmin2 } = useAuth();
+  const isSuperAdmin = isSuperAdmin1 || isSuperAdmin2;
+
   return (
     <div className="space-y-12 pb-12">
       
@@ -198,13 +202,15 @@ export default function SectionsPage() {
                     </div>
                   </div>
 
-                  <Link
-                    href="/apply"
-                    className="px-4 py-2 rounded-full text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 shadow-md transition flex items-center space-x-1"
-                  >
-                    <span>Reserve Machine</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </Link>
+                  {!isSuperAdmin && (
+                    <Link
+                      href="/apply"
+                      className="px-4 py-2 rounded-full text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 shadow-md transition flex items-center space-x-1"
+                    >
+                      <span>Reserve Machine</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </Link>
+                  )}
                 </div>
 
               </div>

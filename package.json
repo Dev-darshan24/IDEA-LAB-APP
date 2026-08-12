@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "npm run dev --prefix web",
+    "dev:host": "npm run dev --prefix web -- -H 0.0.0.0",
     "build": "npm run build --prefix web",
     "start": "npm run start --prefix web"
   }
