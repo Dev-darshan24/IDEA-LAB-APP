@@ -11,6 +11,7 @@ export interface UserProfile {
   phone: string;
   college_id?: string;
   college_name?: string;
+  department?: string;
   profile_image?: string;
   current_education?: EducationType;
   gender?: string;
