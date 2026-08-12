@@ -420,14 +420,14 @@ export default function HomePage() {
       )}
 
       {/* CTA BANNER */}
-      <section className="rounded-4xl p-8 bg-gradient-to-r from-sky-600 via-cyan-600 to-indigo-700 text-white shadow-2xl flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
-        <div className="space-y-1">
-          <h3 className="text-2xl font-extrabold">Have a Revolutionary Prototype Idea?</h3>
-          <p className="text-xs md:text-sm text-sky-100">
-            Apply to access 3D Printers, CNC PCB etching, 6-Axis Robotic Arm, and mentorship from Dr. Neeraj Waijode.
-          </p>
-        </div>
-        {!isSuperAdmin && (
+      {!isSuperAdmin && (
+        <section className="rounded-4xl p-8 bg-gradient-to-r from-sky-600 via-cyan-600 to-indigo-700 text-white shadow-2xl flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
+          <div className="space-y-1">
+            <h3 className="text-2xl font-extrabold">Have a Revolutionary Prototype Idea?</h3>
+            <p className="text-xs md:text-sm text-sky-100">
+              Apply to access 3D Printers, CNC PCB etching, 6-Axis Robotic Arm, and mentorship from Dr. Neeraj Waijode.
+            </p>
+          </div>
           <Link
             href="/apply"
             className="px-6 py-3 rounded-full text-xs font-bold bg-white text-slate-900 hover:bg-slate-100 shadow-lg hover:scale-105 transition shrink-0 flex items-center space-x-2"
@@ -435,8 +435,8 @@ export default function HomePage() {
             <Send className="w-4 h-4 text-sky-600" />
             <span>Submit Project Proposal</span>
           </Link>
-        )}
-      </section>
+        </section>
+      )}
 
     </div>
   );
