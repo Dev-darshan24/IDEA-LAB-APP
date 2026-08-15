@@ -1,8 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import { useRealtimeSync } from '@/context/RealtimeContext';
+import UpdatesCarousel from '@/components/UpdatesCarousel';
+import { UpdateItem } from '@/app/api/updates/route';
 import {
   KeyRound,
   Users,
@@ -34,6 +37,7 @@ import {
   Sliders,
   Check,
   LogOut,
+  Zap,
 } from 'lucide-react';
 
 interface SectionDetail {
@@ -102,21 +106,32 @@ const INITIAL_SECTIONS: SectionDetail[] = [
 
 export default function DeveloperDashboardPage() {
   const { isSuperAdmin2, user, updateProfile, logout } = useAuth();
+  const { triggerGlobalSync } = useRealtimeSync('*', () => { fetchLiveData(); });
 
-  const [activeTab, setActiveTab] = useState<'sections_cms' | 'analytics' | 'heatmap' | 'notifications' | 'site_settings' | 'account'>('sections_cms');
+  const [activeTab, setActiveTab] = useState<'sections_cms' | 'updates_cms' | 'analytics' | 'heatmap' | 'notifications' | 'site_settings' | 'account'>('sections_cms');
+  const [updatesList, setUpdatesList] = useState<UpdateItem[]>([]);
+
+  const fetchUpdatesList = useCallback(async () => {
+    try {
+      const res = await fetch('/api/updates', { cache: 'no-store' });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.updates)) {
+        setUpdatesList(data.updates);
+      }
+    } catch (e) {
+      console.error('Error fetching updates in dev admin:', e);
+    }
+  }, []);
   
-  // Sections State
   const [sections, setSections] = useState<SectionDetail[]>([]);
   const [editingSection, setEditingSection] = useState<SectionDetail | null>(null);
   const [equipmentInput, setEquipmentInput] = useState('');
   const [saveMessage, setSaveMessage] = useState('');
 
-  // Notifications Broadcast State
   const [broadcastTitle, setBroadcastTitle] = useState('');
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [broadcastSuccess, setBroadcastSuccess] = useState(false);
 
-  // Master Site Settings State
   const [siteConfig, setSiteConfig] = useState({
     heroTitle: 'AICTE IDEA LAB TGPCET NAGPUR',
     heroSubtitle: 'Empowering Student Innovators with 5 Technical Prototyping Sections',
@@ -125,7 +140,6 @@ export default function DeveloperDashboardPage() {
     contactPhone: '+91 712 2810001',
   });
 
-  // Account / Password State for Superadmin 2
   const [profileForm, setProfileForm] = useState({
     first_name: user?.first_name || 'Darshan',
     last_name: user?.last_name || 'Developer',
@@ -138,6 +152,14 @@ export default function DeveloperDashboardPage() {
   const [confirmPasswordInput, setConfirmPasswordInput] = useState('');
   const [accountStatusMsg, setAccountStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  const [liveStats, setLiveStats] = useState({
+    totalUsers: 0,
+    totalProjectRequests: 15,
+    totalNotifications: 8,
+    analyticsHits: '2,440 Hits',
+    appHeatmapPeak: '/ (Peak 94%)',
+  });
+
   // App Heatmap Activity Data
   const heatmapData = [
     { route: '/ (Landing Page)', hits: 820, intensity: 'bg-emerald-500', percent: 92 },
@@ -147,19 +169,9 @@ export default function DeveloperDashboardPage() {
     { route: '/admin (Superadmin Consoles)', hits: 290, intensity: 'bg-amber-500', percent: 42 },
   ];
 
-  // Live metrics state
-  const [liveStats, setLiveStats] = useState({
-    totalUsers: 0,
-    totalProjectRequests: 15,
-    totalNotifications: 8,
-    analyticsHits: '2,440 Hits',
-    appHeatmapPeak: '/ (Peak 94%)',
-  });
-
-  // Fetch all live developer data
-  const fetchLiveData = async () => {
+  const fetchLiveData = useCallback(async () => {
     try {
-      // 1. Fetch live sections CMS data
+      fetchUpdatesList();
       const secRes = await fetch('/api/sections', { cache: 'no-store' });
       const secData = await secRes.json();
       if (secData.success && Array.isArray(secData.sections)) {
@@ -167,7 +179,6 @@ export default function DeveloperDashboardPage() {
         localStorage.setItem('idea_lab_sections_data', JSON.stringify(secData.sections));
       }
 
-      // 2. Fetch live platform metrics
       const statsRes = await fetch('/api/admin/stats', { cache: 'no-store' });
       const statsData = await statsRes.json();
       if (statsData.success && statsData.stats) {
@@ -182,7 +193,7 @@ export default function DeveloperDashboardPage() {
     } catch (e) {
       console.error('Error fetching developer live metrics:', e);
     }
-  };
+  }, [fetchUpdatesList]);
 
   useEffect(() => {
     if (user) {
@@ -196,13 +207,11 @@ export default function DeveloperDashboardPage() {
       });
     }
 
-    // Initial fetch & polling interval every 4 seconds
     fetchLiveData();
     const interval = setInterval(fetchLiveData, 4000);
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user, fetchLiveData]);
 
-  // FULL DASHBOARD METRICS strictly: (TOTAL USER, ANALYTICS, HEATMAP OF APP, TOTAL PROJECT REQUEST, NOTIFICATION)
   const totalUsers = liveStats.totalUsers;
   const analyticsHits = liveStats.analyticsHits;
   const appHeatmapPeak = liveStats.appHeatmapPeak;
@@ -400,6 +409,18 @@ export default function DeveloperDashboardPage() {
         </button>
 
         <button
+          onClick={() => setActiveTab('updates_cms')}
+          className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase transition flex items-center space-x-2 ${
+            activeTab === 'updates_cms'
+              ? 'bg-cyan-400 text-slate-950 shadow-md font-extrabold'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+          }`}
+        >
+          <Zap className="w-4 h-4 text-amber-400" />
+          <span>Image Updates Carousel ({updatesList.length})</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('analytics')}
           className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase transition flex items-center space-x-2 ${
             activeTab === 'analytics'
@@ -520,6 +541,22 @@ export default function DeveloperDashboardPage() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* TAB: IMAGE UPDATES CAROUSEL CMS */}
+      {activeTab === 'updates_cms' && (
+        <div className="space-y-6">
+          <div className="glass-card p-6 rounded-3xl border border-cyan-500/20 bg-slate-900/40 space-y-2">
+            <h2 className="text-xl font-bold text-white flex items-center space-x-2">
+              <Zap className="w-5 h-5 text-cyan-400" />
+              <span>Homepage Image Updates Slider CMS</span>
+            </h2>
+            <p className="text-xs text-slate-400">
+              Lead Developer CMS control for adding, editing, and deleting homepage updates slides stored in Supabase.
+            </p>
+          </div>
+          <UpdatesCarousel updates={updatesList} isSuperAdmin={true} onRefresh={fetchUpdatesList} />
         </div>
       )}
 

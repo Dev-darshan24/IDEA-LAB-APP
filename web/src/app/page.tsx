@@ -1,11 +1,14 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ThreeCanvasBanner } from '@/components/ThreeCanvasBanner';
 import { useAuth } from '@/context/AuthContext';
+import { useRealtimeSync } from '@/context/RealtimeContext';
 import { GalleryItem, Project } from '@/types';
+import UpdatesCarousel from '@/components/UpdatesCarousel';
+import { UpdateItem } from '@/app/api/updates/route';
 import {
   Sparkles,
   ArrowRight,
@@ -68,34 +71,55 @@ export default function HomePage() {
   const [projectCount, setProjectCount] = useState<number>(50);
   const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
   const [liveProjects, setLiveProjects] = useState<Project[]>([]);
+  const [updates, setUpdates] = useState<UpdateItem[]>([]);
+
+  const fetchUpdates = useCallback(async () => {
+    try {
+      const res = await fetch('/api/updates', { cache: 'no-store' });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.updates)) {
+        setUpdates(data.updates);
+      }
+    } catch (e) {
+      console.error('Error fetching updates from API:', e);
+    }
+  }, []);
+
+  const fetchLiveProjects = useCallback(async () => {
+    try {
+      const res = await fetch('/api/projects', { cache: 'no-store' });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.projects)) {
+        setLiveProjects(data.projects);
+        setProjectCount(data.projects.length);
+      }
+    } catch (e) {
+      console.error('Error fetching live project count for stats:', e);
+    }
+  }, []);
+
+  const fetchLiveGallery = useCallback(async () => {
+    try {
+      const res = await fetch('/api/gallery', { cache: 'no-store' });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.gallery) && data.gallery.length > 0) {
+        setGalleryItems(data.gallery);
+      }
+    } catch (e) {
+      console.error('Error fetching gallery items for home page:', e);
+    }
+  }, []);
+
+  // Hook up zero-delay realtime subscriptions for home page components
+  useRealtimeSync('updates', fetchUpdates);
+  useRealtimeSync('projects', fetchLiveProjects);
+  useRealtimeSync('gallery', fetchLiveGallery);
 
   useEffect(() => {
-    async function fetchLiveProjects() {
-      try {
-        const res = await fetch('/api/projects', { cache: 'no-store' });
-        const data = await res.json();
-        if (data.success && Array.isArray(data.projects)) {
-          setLiveProjects(data.projects);
-          setProjectCount(data.projects.length);
-        }
-      } catch (e) {
-        console.error('Error fetching live project count for stats:', e);
-      }
-    }
-    async function fetchLiveGallery() {
-      try {
-        const res = await fetch('/api/gallery', { cache: 'no-store' });
-        const data = await res.json();
-        if (data.success && Array.isArray(data.gallery) && data.gallery.length > 0) {
-          setGalleryItems(data.gallery);
-        }
-      } catch (e) {
-        console.error('Error fetching gallery items for home page:', e);
-      }
-    }
     fetchLiveProjects();
     fetchLiveGallery();
-  }, []);
+    fetchUpdates();
+  }, [fetchLiveProjects, fetchLiveGallery, fetchUpdates]);
 
   return (
     <div className="space-y-12 pb-12">
@@ -105,17 +129,13 @@ export default function HomePage() {
         <ThreeCanvasBanner />
       </section>
 
-      {/* ANNOUNCEMENT UPDATES MARQUEE */}
-      <section className="glass-card p-4 rounded-2xl border border-sky-500/20 flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-4 bg-gradient-to-r from-sky-500/10 via-cyan-500/10 to-indigo-500/10">
-        <div className="flex items-center space-x-2 px-3 py-1 bg-sky-600 text-white rounded-full text-xs font-bold shrink-0 shadow-md">
-          <Zap className="w-3.5 h-3.5 animate-bounce" />
-          <span>UPDATES</span>
-        </div>
-        <div className="overflow-hidden w-full">
-          <p className="text-xs md:text-sm text-slate-700 dark:text-slate-200 font-medium whitespace-nowrap animate-pulse">
-            🔥 Summer Prototyping Boot Camp 2026 Registration Open! | 🤖 6-Axis Robotic Arm Masterclass with Dr. Neeraj Waijode on August 15 | 🏆 Chief Student Innovator Darshan wins AICTE National Award!
-          </p>
-        </div>
+      {/* ANNOUNCEMENT UPDATES SLIDER CAROUSEL */}
+      <section>
+        <UpdatesCarousel
+          updates={updates}
+          isSuperAdmin={isSuperAdmin}
+          onRefresh={fetchUpdates}
+        />
       </section>
 
       {/* QUICK LAB METRICS STATS WITH INTERACTIVE LINKS */}

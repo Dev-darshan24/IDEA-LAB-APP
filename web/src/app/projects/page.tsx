@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Project, TeamMember } from '@/types';
 import { useAuth } from '@/context/AuthContext';
+import { useRealtimeSync } from '@/context/RealtimeContext';
 import {
   Search,
   User,
@@ -151,7 +152,7 @@ export default function ProjectsPage() {
   };
 
   // Load global projects from API
-  const fetchGlobalProjects = async (showIndicator = false) => {
+  const fetchGlobalProjects = useCallback(async (showIndicator = false) => {
     if (showIndicator) setIsRefreshing(true);
     try {
       const res = await fetch('/api/projects', { cache: 'no-store' });
@@ -167,15 +168,16 @@ export default function ProjectsPage() {
       setLoading(false);
       if (showIndicator) setIsRefreshing(false);
     }
-  };
+  }, []);
+
+  // Hook up zero-delay realtime sync
+  const { triggerGlobalSync } = useRealtimeSync('projects', () => {
+    fetchGlobalProjects();
+  });
 
   useEffect(() => {
     fetchGlobalProjects();
-    const interval = setInterval(() => {
-      fetchGlobalProjects();
-    }, 8000);
-    return () => clearInterval(interval);
-  }, []);
+  }, [fetchGlobalProjects]);
 
   // Open Modal for Add Project
   const handleOpenAddModal = () => {
@@ -450,6 +452,7 @@ export default function ProjectsPage() {
           setSelectedProject({ ...selectedProject, ...payload } as Project);
         }
         setSuccessMsg(editingProject ? 'Project updated permanently in Supabase database!' : 'New Project added permanently to Supabase database!');
+        triggerGlobalSync('projects');
         setTimeout(() => setSuccessMsg(''), 5000);
       } else {
         showError(`Failed to save project: ${data.message || 'Database error'}`);
@@ -484,6 +487,7 @@ export default function ProjectsPage() {
       if (data.success && Array.isArray(data.projects)) {
         setProjects(data.projects);
         setSuccessMsg('Project deleted permanently from Supabase database!');
+        triggerGlobalSync('projects');
         setTimeout(() => setSuccessMsg(''), 5000);
       } else {
         showError(`Failed to delete project: ${data.message || 'Database error'}`);

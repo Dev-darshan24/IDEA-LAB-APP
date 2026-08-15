@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { GalleryItem } from '@/types';
 import { useAuth } from '@/context/AuthContext';
+import { useRealtimeSync } from '@/context/RealtimeContext';
 import {
   Calendar,
   Search,
@@ -112,7 +113,7 @@ export default function GalleryPage() {
   };
 
   // Load global gallery data from backend API
-  const fetchGlobalGallery = async (showRefreshIndicator = false) => {
+  const fetchGlobalGallery = useCallback(async (showRefreshIndicator = false) => {
     if (showRefreshIndicator) setIsRefreshing(true);
     try {
       const res = await fetch('/api/gallery', { cache: 'no-store' });
@@ -128,18 +129,16 @@ export default function GalleryPage() {
       setLoading(false);
       if (showRefreshIndicator) setIsRefreshing(false);
     }
-  };
+  }, []);
+
+  // Hook up zero-delay realtime sync
+  const { triggerGlobalSync } = useRealtimeSync('gallery', () => {
+    fetchGlobalGallery();
+  });
 
   useEffect(() => {
     fetchGlobalGallery();
-    
-    // Poll every 8 seconds for live sync across all superadmins & visitors
-    const interval = setInterval(() => {
-      fetchGlobalGallery();
-    }, 8000);
-
-    return () => clearInterval(interval);
-  }, []);
+  }, [fetchGlobalGallery]);
 
   // Handle File Input Change with Auto-Compression
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -214,6 +213,7 @@ export default function GalleryPage() {
         setFilePreview(null);
         setIsAddModalOpen(false);
         setSuccessMsg(`Successfully added ${newMediaType === 'video' ? 'video' : 'photo'} permanently to Supabase database!`);
+        triggerGlobalSync('gallery');
         setTimeout(() => setSuccessMsg(''), 5000);
       } else {
         showError(`Failed to add gallery item: ${data.message || 'Database error'}`);
@@ -243,6 +243,7 @@ export default function GalleryPage() {
         }
         setDeleteConfirmId(null);
         setSuccessMsg('Media deleted permanently from Supabase database!');
+        triggerGlobalSync('gallery');
         setTimeout(() => setSuccessMsg(''), 5000);
       } else {
         showError(`Failed to delete gallery item: ${data.message || 'Database error'}`);

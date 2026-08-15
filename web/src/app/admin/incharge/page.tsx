@@ -1,8 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import { useRealtimeSync } from '@/context/RealtimeContext';
+import UpdatesCarousel from '@/components/UpdatesCarousel';
+import { UpdateItem } from '@/app/api/updates/route';
 import {
   ShieldAlert,
   CheckCircle2,
@@ -24,6 +27,7 @@ import {
   Check,
   Filter,
   LogOut,
+  Zap,
 } from 'lucide-react';
 
 interface MockApplication {
@@ -53,7 +57,8 @@ interface EventItem {
 
 export default function InchargeDashboardPage() {
   const { isSuperAdmin1, user, updateProfile, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<'requests' | 'events' | 'notifications' | 'account'>('requests');
+  const [activeTab, setActiveTab] = useState<'requests' | 'events' | 'updates' | 'notifications' | 'account'>('requests');
+  const [updatesList, setUpdatesList] = useState<UpdateItem[]>([]);
 
   // Applications State
   const [applications, setApplications] = useState<MockApplication[]>([]);
@@ -102,9 +107,22 @@ export default function InchargeDashboardPage() {
     totalNotifications: 0,
   });
 
-  // Fetch all live data from Supabase APIs
-  const fetchLiveData = async () => {
+  const fetchUpdatesList = useCallback(async () => {
     try {
+      const res = await fetch('/api/updates', { cache: 'no-store' });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.updates)) {
+        setUpdatesList(data.updates);
+      }
+    } catch (e) {
+      console.error('Error fetching updates in admin:', e);
+    }
+  }, []);
+
+  // Fetch all live data from Supabase APIs
+  const fetchLiveData = useCallback(async () => {
+    try {
+      fetchUpdatesList();
       // 1. Fetch live proposals & applications from Supabase
       const propRes = await fetch('/api/proposals?all=true', { cache: 'no-store' });
       const propData = await propRes.json();
@@ -161,7 +179,12 @@ export default function InchargeDashboardPage() {
     } catch (e) {
       console.error('Error fetching incharge live data:', e);
     }
-  };
+  }, [fetchUpdatesList]);
+
+  // Hook up zero-delay realtime sync
+  const { triggerGlobalSync } = useRealtimeSync('*', () => {
+    fetchLiveData();
+  });
 
   useEffect(() => {
     // Sync profile form when user object updates
@@ -187,11 +210,9 @@ export default function InchargeDashboardPage() {
       }
     }
 
-    // Initial fetch & real-time polling interval every 4 seconds
+    // Initial fetch
     fetchLiveData();
-    const interval = setInterval(fetchLiveData, 4000);
-    return () => clearInterval(interval);
-  }, [user]);
+  }, [user, fetchLiveData]);
 
   // LIMITED DASHBOARD METRICS strictly: (TOTAL USER, TOTAL PROJECT REQUEST, NOTIFICATION)
   const totalUsers = liveStats.totalUsers;
@@ -219,6 +240,7 @@ export default function InchargeDashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, status, incharge_message: messageInput }),
       });
+      triggerGlobalSync('project_proposals');
     } catch (err) {
       console.error('Failed to sync decision to server:', err);
     }
@@ -261,6 +283,7 @@ export default function InchargeDashboardPage() {
           status: 'published',
         }),
       });
+      triggerGlobalSync('events');
     } catch (err) {
       console.error('Failed to sync activity to server:', err);
     }
@@ -287,6 +310,7 @@ export default function InchargeDashboardPage() {
 
     try {
       await fetch(`/api/events?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      triggerGlobalSync('events');
     } catch (err) {
       console.error('Failed to delete event on server:', err);
     }
@@ -465,6 +489,18 @@ export default function InchargeDashboardPage() {
         >
           <Calendar className="w-4 h-4" />
           <span>Edit Events & Training Programs ({events.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('updates')}
+          className={`px-5 py-2.5 rounded-full text-xs font-bold transition flex items-center space-x-2 ${
+            activeTab === 'updates'
+              ? 'bg-indigo-600 text-white shadow-md'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+          }`}
+        >
+          <Zap className="w-4 h-4 text-amber-400" />
+          <span>Image Updates Carousel ({updatesList.length})</span>
         </button>
 
         <button
@@ -710,7 +746,23 @@ export default function InchargeDashboardPage() {
         </div>
       )}
 
-      {/* TAB 3: INCHARGE NOTIFICATIONS & ANNOUNCEMENTS */}
+      {/* TAB 3: IMAGE UPDATES CAROUSEL MANAGER */}
+      {activeTab === 'updates' && (
+        <div className="space-y-6">
+          <div className="glass-card p-6 rounded-3xl border border-amber-500/20 bg-slate-900/40 space-y-2">
+            <h2 className="text-xl font-bold text-white flex items-center space-x-2">
+              <Zap className="w-5 h-5 text-amber-400" />
+              <span>Image Updates & Banner Management</span>
+            </h2>
+            <p className="text-xs text-slate-400">
+              Manage auto-sliding homepage updates (3s interval). Add, edit, or delete update slides stored permanently in Supabase.
+            </p>
+          </div>
+          <UpdatesCarousel updates={updatesList} isSuperAdmin={true} onRefresh={fetchUpdatesList} />
+        </div>
+      )}
+
+      {/* TAB 4: INCHARGE NOTIFICATIONS & ANNOUNCEMENTS */}
       {activeTab === 'notifications' && (
         <div className="glass-card p-6 md:p-8 rounded-4xl border border-indigo-500/20 space-y-6">
           <div>
