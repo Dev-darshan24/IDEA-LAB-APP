@@ -189,6 +189,21 @@ CREATE TABLE IF NOT EXISTS public.site_contact (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 14. UPDATES TABLE
+CREATE TABLE IF NOT EXISTS public.updates (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  tag TEXT DEFAULT 'UPDATES',
+  description TEXT DEFAULT '',
+  image_url TEXT DEFAULT '',
+  link_url TEXT DEFAULT '',
+  badge_color TEXT DEFAULT 'sky',
+  is_active BOOLEAN DEFAULT true,
+  display_order INT DEFAULT 1,
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ==============================================================================
 -- ENABLE RLS & FULL ACCESS POLICIES
 -- ==============================================================================
@@ -206,6 +221,7 @@ ALTER TABLE public.faculty_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.lab_incharge ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.chapter_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.site_contact ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.updates ENABLE ROW LEVEL SECURITY;
 
 -- Permissive policies for web API operations
 DROP POLICY IF EXISTS "Profiles full access" ON public.profiles;
@@ -246,6 +262,9 @@ CREATE POLICY "Chapter members full access" ON public.chapter_members FOR ALL US
 
 DROP POLICY IF EXISTS "Site contact full access" ON public.site_contact;
 CREATE POLICY "Site contact full access" ON public.site_contact FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Updates full access" ON public.updates;
+CREATE POLICY "Updates full access" ON public.updates FOR ALL USING (true) WITH CHECK (true);
 
 -- Grant privileges to anon and authenticated roles
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;

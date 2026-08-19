@@ -4,6 +4,29 @@ import { supabase } from '@/lib/supabaseClient';
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
+const SUPERADMIN_EMAILS = [
+  'superadmin@tgpcet.com',
+  'superadmin1@tgpcet.com',
+  'superadmin2@tgpcet.com',
+  'developer@idealab.com',
+  'incharge@idealab.com',
+  'admin@tgpcet.com',
+  'idealab@tgpcet.com',
+];
+
+function isSuperAdminUser(user: { email?: string; role?: string }): boolean {
+  if (!user) return false;
+  const email = (user.email || '').toLowerCase().trim();
+  const role = (user.role || '').toLowerCase().trim();
+
+  if (SUPERADMIN_EMAILS.includes(email)) return true;
+  if (email.includes('superadmin') || email.includes('admin@') || email.includes('incharge@') || email.includes('developer@')) return true;
+  if (role === 'superadmin' || role === 'superadmin1' || role === 'superadmin2' || role === 'admin' || role === 'developer' || role === 'incharge') return true;
+  if (role.includes('admin')) return true;
+
+  return false;
+}
+
 export async function GET() {
   let totalUsers = 0;
   let totalProjectRequests = 0;
@@ -11,11 +34,12 @@ export async function GET() {
   let totalNotifications = 0;
   let totalEvents = 0;
 
-  // 1. Fetch live user count from Supabase profiles table in real-time
+  // 1. Fetch live student user count (excluding superadmins) from Supabase
   try {
-    const { count, error } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
-    if (!error && count !== null) {
-      totalUsers = count;
+    const { data: profilesData, error } = await supabase.from('profiles').select('*');
+    if (!error && Array.isArray(profilesData)) {
+      const studentProfiles = profilesData.filter((u) => !isSuperAdminUser(u));
+      totalUsers = studentProfiles.length;
     }
   } catch (e) {
     console.error('Error fetching Supabase user count:', e);

@@ -131,10 +131,6 @@ export default function AboutPage() {
 
   useEffect(() => {
     fetchFacultyData();
-    const interval = setInterval(() => {
-      fetchFacultyData();
-    }, 8000);
-    return () => clearInterval(interval);
   }, []);
 
   // Open Modal for Add Faculty
@@ -420,6 +416,14 @@ export default function AboutPage() {
           <div className="glass-card p-12 text-center rounded-3xl border border-sky-500/20 space-y-3">
             <RefreshCw className="w-8 h-8 text-sky-500 animate-spin mx-auto" />
             <p className="text-xs font-bold text-slate-600 dark:text-slate-300">Synchronizing live faculty records...</p>
+          </div>
+        ) : faculties.length === 0 ? (
+          <div className="glass-card p-12 text-center rounded-3xl border border-sky-500/20 space-y-2">
+            <UserCheck className="w-10 h-10 text-sky-500/50 mx-auto" />
+            <p className="text-sm font-bold text-slate-700 dark:text-slate-200">No faculty members found in live database</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {canManageFaculty ? 'Click "Add Faculty Member" above to add faculty section heads.' : 'Faculty profiles will appear here once configured by the Lab Superadmin.'}
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

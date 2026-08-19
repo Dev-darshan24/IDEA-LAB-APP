@@ -83,7 +83,7 @@
     }
   </style>
 </head>
-<body class="flex flex-col min-h-screen">
+<body class="flex flex-col min-h-screen pb-20 md:pb-0">
 
   <!-- NAVBAR -->
   <header class="sticky top-0 z-40 w-full backdrop-blur-xl bg-white/80 dark:bg-slate-900/85 border-b border-sky-500/10 transition-colors">
@@ -787,6 +787,42 @@
     </div>
   </footer>
 
+  <!-- MOBILE BOTTOM TAB NAVIGATION BAR -->
+  <nav class="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 border-t border-slate-200 dark:border-slate-800 backdrop-blur-lg pb-[env(safe-area-inset-bottom,0px)] shadow-lg transition-colors">
+    <div class="flex items-center justify-around h-16 px-1 max-w-md mx-auto">
+      <button onclick="navigateTo('home')" id="mobile-tab-home" class="mobile-tab-btn flex flex-col items-center justify-center flex-1 h-full py-1 text-slate-500 dark:text-slate-400 group transition-all">
+        <div class="mobile-icon-box p-1.5 rounded-full transition-transform">
+          <i data-lucide="home" class="w-5 h-5"></i>
+        </div>
+        <span class="text-[11px] leading-tight mt-0.5 font-medium">Home</span>
+      </button>
+      <button onclick="navigateTo('sections')" id="mobile-tab-sections" class="mobile-tab-btn flex flex-col items-center justify-center flex-1 h-full py-1 text-slate-500 dark:text-slate-400 group transition-all">
+        <div class="mobile-icon-box p-1.5 rounded-full transition-transform">
+          <i data-lucide="layers" class="w-5 h-5"></i>
+        </div>
+        <span class="text-[11px] leading-tight mt-0.5 font-medium">Sections</span>
+      </button>
+      <button onclick="navigateTo('projects')" id="mobile-tab-projects" class="mobile-tab-btn flex flex-col items-center justify-center flex-1 h-full py-1 text-slate-500 dark:text-slate-400 group transition-all">
+        <div class="mobile-icon-box p-1.5 rounded-full transition-transform">
+          <i data-lucide="award" class="w-5 h-5"></i>
+        </div>
+        <span class="text-[11px] leading-tight mt-0.5 font-medium">Projects</span>
+      </button>
+      <button onclick="navigateTo('gallery')" id="mobile-tab-gallery" class="mobile-tab-btn flex flex-col items-center justify-center flex-1 h-full py-1 text-slate-500 dark:text-slate-400 group transition-all">
+        <div class="mobile-icon-box p-1.5 rounded-full transition-transform">
+          <i data-lucide="image" class="w-5 h-5"></i>
+        </div>
+        <span class="text-[11px] leading-tight mt-0.5 font-medium">Gallery</span>
+      </button>
+      <button onclick="navigateTo('apply')" id="mobile-tab-apply" class="mobile-tab-btn flex flex-col items-center justify-center flex-1 h-full py-1 text-slate-500 dark:text-slate-400 group transition-all">
+        <div class="mobile-icon-box p-1.5 rounded-full transition-transform">
+          <i data-lucide="send" class="w-5 h-5"></i>
+        </div>
+        <span class="text-[11px] leading-tight mt-0.5 font-medium">Apply</span>
+      </button>
+    </div>
+  </nav>
+
   <!-- APP JAVASCRIPT LOGIC -->
   <script>
     // Lucide Icons Initialization
@@ -1074,6 +1110,21 @@
       if (activeNav) {
         activeNav.classList.add('bg-sky-600', 'text-white');
         activeNav.classList.remove('text-slate-600', 'dark:text-slate-300');
+      }
+
+      // Update Mobile Bottom Tab buttons styling
+      document.querySelectorAll('.mobile-tab-btn').forEach(btn => {
+        btn.classList.remove('text-sky-600', 'dark:text-sky-400', 'font-bold');
+        btn.classList.add('text-slate-500', 'dark:text-slate-400');
+        const box = btn.querySelector('.mobile-icon-box');
+        if (box) box.classList.remove('bg-sky-500/15', 'dark:bg-sky-400/20', 'scale-110');
+      });
+      const activeMobileTab = document.getElementById('mobile-tab-' + viewId);
+      if (activeMobileTab) {
+        activeMobileTab.classList.add('text-sky-600', 'dark:text-sky-400', 'font-bold');
+        activeMobileTab.classList.remove('text-slate-500', 'dark:text-slate-400');
+        const box = activeMobileTab.querySelector('.mobile-icon-box');
+        if (box) box.classList.add('bg-sky-500/15', 'dark:bg-sky-400/20', 'scale-110');
       }
       window.scrollTo(0, 0);
     }

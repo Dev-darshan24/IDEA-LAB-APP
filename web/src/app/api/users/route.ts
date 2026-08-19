@@ -4,21 +4,47 @@ import { supabase } from '@/lib/supabaseClient';
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
+const SUPERADMIN_EMAILS = [
+  'superadmin@tgpcet.com',
+  'superadmin1@tgpcet.com',
+  'superadmin2@tgpcet.com',
+  'developer@idealab.com',
+  'incharge@idealab.com',
+  'admin@tgpcet.com',
+  'idealab@tgpcet.com',
+];
+
+function isSuperAdminUser(user: { email?: string; role?: string }): boolean {
+  if (!user) return false;
+  const email = (user.email || '').toLowerCase().trim();
+  const role = (user.role || '').toLowerCase().trim();
+
+  if (SUPERADMIN_EMAILS.includes(email)) return true;
+  if (email.includes('superadmin') || email.includes('admin@') || email.includes('incharge@') || email.includes('developer@')) return true;
+  if (role === 'superadmin' || role === 'superadmin1' || role === 'superadmin2' || role === 'admin' || role === 'developer' || role === 'incharge') return true;
+  if (role.includes('admin')) return true;
+
+  return false;
+}
+
 export async function GET() {
   try {
-    const { data, count, error } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
-      .select('*', { count: 'exact' });
+      .select('*');
 
     if (error) {
       console.error('Error fetching Supabase profiles:', error);
       return NextResponse.json({ success: true, totalUsers: 0, users: [] });
     }
 
+    const allProfiles = data || [];
+    const nonAdminUsers = allProfiles.filter((u) => !isSuperAdminUser(u));
+
     return NextResponse.json({
       success: true,
-      totalUsers: count || (data ? data.length : 0),
-      users: data || [],
+      totalUsers: nonAdminUsers.length,
+      users: nonAdminUsers,
     });
   } catch (error) {
     return NextResponse.json(
@@ -38,11 +64,9 @@ export async function POST(request: Request) {
     const cleanEmail = body.email.toLowerCase().trim();
     const collegeIdInput = body.college_id || (typeof body.id === 'string' && body.id.startsWith('IDEA-') ? body.id : '');
 
-    // Check if id is a valid UUID
     const isValidUuid = typeof body.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.id);
     let targetProfileId = isValidUuid ? body.id : null;
 
-    // If no valid UUID id provided, query existing profile by email
     if (!targetProfileId) {
       try {
         const { data: existingUser } = await supabase
@@ -82,9 +106,7 @@ export async function POST(request: Request) {
       .upsert([userProfile], { onConflict: 'id' })
       .select();
 
-    // Fallback resilience if extended columns are missing in remote DB schema
     if (error && (error.message.includes('Could not find') || error.message.includes('column') || error.code === 'PGRST204')) {
-      console.warn('[POST /api/users] Column missing in profiles schema cache, retrying with core payload:', error.message);
       const coreProfile = {
         id: targetProfileId,
         email: cleanEmail,
@@ -106,16 +128,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: error.message }, { status: 500 });
     }
 
-    // Get current total count from Supabase
-    const { count } = await supabase
-      .from('profiles')
-      .select('*', { count: 'exact', head: true });
+    const { data: allData } = await supabase.from('profiles').select('*');
+    const nonAdminCount = (allData || []).filter((u) => !isSuperAdminUser(u)).length;
 
     return NextResponse.json({
       success: true,
       message: 'User stored on Supabase successfully',
       user: data ? data[0] : userProfile,
-      totalUsers: count || 1,
+      totalUsers: nonAdminCount || 1,
     });
   } catch (error: any) {
     console.error('[POST /api/users] Exception:', error);

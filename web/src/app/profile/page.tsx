@@ -3,7 +3,7 @@
 import React, { useState, useRef } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { User, Mail, Phone, Building, GraduationCap, MapPin, FileText, CheckCircle2, Clock, XCircle, Edit, Save, Send, Camera, Upload, Eye, FileCheck, Image as ImageIcon } from 'lucide-react';
+import { User, Mail, Phone, Building, GraduationCap, MapPin, FileText, CheckCircle2, Clock, XCircle, Edit, Save, Send, Camera, Upload, Eye, FileCheck, Image as ImageIcon, X, Calendar } from 'lucide-react';
 import { EducationType } from '@/types';
 
 export default function ProfilePage() {
@@ -32,24 +32,115 @@ export default function ProfilePage() {
   const photoInputRef = useRef<HTMLInputElement>(null);
   const resumeInputRef = useRef<HTMLInputElement>(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [selectedAppModal, setSelectedAppModal] = useState<any | null>(null);
 
   const showError = (msg: string) => {
     setErrorMessage(msg);
     setTimeout(() => setErrorMessage(''), 5000);
   };
 
-  // Dynamic Applications state
+  // Dynamic Applications state fetched directly from Supabase database
   const [submittedApplications, setSubmittedApplications] = useState<any[]>([]);
 
   React.useEffect(() => {
-    try {
-      const stored = localStorage.getItem('idea_lab_applications');
-      const savedApps = stored ? JSON.parse(stored) : [];
-      setSubmittedApplications(Array.isArray(savedApps) ? savedApps : []);
-    } catch (e) {
-      setSubmittedApplications([]);
-    }
-  }, []);
+    if (!user) return;
+
+    const fetchUserApps = async () => {
+      try {
+        let allUserApps: any[] = [];
+
+        // 1. Fetch project proposals from Supabase
+        const propRes = await fetch(`/api/proposals?user_id=${user.id}`, { cache: 'no-store' });
+        const propData = await propRes.json();
+        if (propData.success && Array.isArray(propData.proposals)) {
+          const mappedProps = propData.proposals.map((p: any) => ({
+            id: p.id,
+            title: p.project_name,
+            type: 'project',
+            applicant_name: p.applicant_name || `${user.first_name} ${user.last_name}`,
+            applicant_email: p.applicant_email || user.email,
+            applicant_phone: p.applicant_phone || user.phone,
+            department: p.department || 'Engineering',
+            branch: p.branch || user.current_education || 'B.Tech',
+            year: p.year || 'Final Year',
+            roll_number: p.roll_number || user.college_id,
+            abstract: p.project_description || p.problem_statement,
+            description: p.project_description,
+            pdf_url: p.document_path,
+            status: p.status === 'submitted' ? 'pending' : (p.status || 'pending'),
+            incharge_message: p.admin_comments || '',
+            created_at: p.submitted_at ? new Date(p.submitted_at).toLocaleDateString() : 'Recent',
+          }));
+          allUserApps = [...allUserApps, ...mappedProps];
+        }
+
+        // 2. Fetch event & training registrations from Supabase + events list for full details
+        const [actRes, evRes, actAppsRes] = await Promise.all([
+          fetch('/api/activities', { cache: 'no-store' }),
+          fetch('/api/events', { cache: 'no-store' }),
+          fetch(`/api/activity-applications?user_id=${user.id}&email=${encodeURIComponent(user.email || '')}`, { cache: 'no-store' }),
+        ]);
+
+        const actData = await actRes.json();
+        const evData = await evRes.json();
+        const actAppsData = await actAppsRes.json();
+
+        let allEventsList: any[] = [];
+        if (actData.success && Array.isArray(actData.activities)) {
+          allEventsList = [...allEventsList, ...actData.activities];
+        }
+        if (evData.success && Array.isArray(evData.events)) {
+          allEventsList = [...allEventsList, ...evData.events];
+        }
+
+        if (actAppsData.success && Array.isArray(actAppsData.applications)) {
+          const mappedActs = actAppsData.applications.map((a: any) => {
+            const matchedEvent = allEventsList.find(
+              (e) => e.id === a.activity_id || e.id === a.id || e.title?.toLowerCase() === a.activity_title?.toLowerCase() || e.title?.toLowerCase() === a.title?.toLowerCase()
+            );
+
+            const displayTitle = (matchedEvent?.title || a.activity_title || a.title || 'Event 1').replace(/^Event Application$/i, 'Event 1');
+            const displayDesc = matchedEvent?.description || matchedEvent?.full_detail || a.description || 'Specialized training program hosted at AICTE IDEA Lab, TGPCET.';
+
+            return {
+              id: a.id,
+              activity_id: a.activity_id,
+              title: displayTitle,
+              type: a.type || matchedEvent?.category?.toLowerCase() || 'event',
+              applicant_name: a.applicant_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Participant',
+              applicant_email: a.applicant_email || user.email,
+              applicant_phone: a.applicant_phone || user.phone || '',
+              department: a.department || 'Engineering',
+              branch: a.branch || user.current_education || 'B.Tech',
+              year: a.year || 'Final Year',
+              roll_number: a.roll_number || user.college_id || '',
+              status: a.status || 'approved',
+              abstract: displayDesc,
+              description: displayDesc,
+              created_at: a.applied_at ? new Date(a.applied_at).toLocaleDateString() : (a.created_at || 'Recent'),
+              date: matchedEvent?.date || a.date || 'August 28, 2026',
+              venue: matchedEvent?.venue || a.venue || 'AICTE IDEA Lab, TGPCET',
+              organizer: matchedEvent?.organizer || matchedEvent?.trainer || 'Dr. Neeraj Waijode',
+              incharge_message: a.admin_comments || a.incharge_message || '',
+            };
+          });
+
+          const existingIds = new Set(allUserApps.map((x) => x.id));
+          mappedActs.forEach((ma: any) => {
+            if (!existingIds.has(ma.id)) {
+              allUserApps.push(ma);
+            }
+          });
+        }
+
+        setSubmittedApplications(allUserApps);
+      } catch (e) {
+        console.error('Error fetching user applications from Supabase:', e);
+      }
+    };
+
+    fetchUserApps();
+  }, [user]);
 
   // Upload Profile Picture (Avatar)
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -479,36 +570,175 @@ export default function ProfilePage() {
             submittedApplications.map((app) => (
               <div
                 key={app.id}
-                className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-sky-500/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs"
+                onClick={() => setSelectedAppModal(app)}
+                className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-sky-500/10 hover:border-sky-500/40 cursor-pointer transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs group"
               >
                 <div>
                   <div className="flex items-center space-x-2">
-                    <span className="font-bold text-slate-900 dark:text-white">{app.title}</span>
+                    <span className="font-bold text-slate-900 dark:text-white group-hover:text-sky-500 transition">{app.title}</span>
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 dark:bg-sky-950 text-sky-600 dark:text-cyan-400 uppercase">
                       {app.type}
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-500 mt-1">Submitted on {app.created_at || app.date}</p>
+                  <p className="text-[11px] text-slate-500 mt-1">Submitted on {app.created_at || app.date || 'Recent'}</p>
                 </div>
 
                 <div className="flex items-center space-x-3">
-                  {app.status === 'approved' ? (
-                    <span className="px-3 py-1 rounded-full font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-300 flex items-center space-x-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Approved by Incharge</span>
-                    </span>
-                  ) : (
-                    <span className="px-3 py-1 rounded-full font-bold bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-300 flex items-center space-x-1">
-                      <Clock className="w-3.5 h-3.5" />
-                      <span>Under Review</span>
-                    </span>
+                  {(app.type === 'project' || app.type === 'proposal') && (
+                    <>
+                      {app.status === 'approved' ? (
+                        <span className="px-3 py-1 rounded-full font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-300 flex items-center space-x-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Approved by Incharge</span>
+                        </span>
+                      ) : app.status === 'rejected' ? (
+                        <span className="px-3 py-1 rounded-full font-bold bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-300 flex items-center space-x-1">
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>Rejected</span>
+                        </span>
+                      ) : (
+                        <span className="px-3 py-1 rounded-full font-bold bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-300 flex items-center space-x-1">
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>Under Review</span>
+                        </span>
+                      )}
+                    </>
                   )}
+                  <button className="p-1.5 rounded-xl bg-sky-500/10 text-sky-500 hover:bg-sky-500 hover:text-white transition" title="View Application Details">
+                    <Eye className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             ))
           )}
         </div>
       </div>
+
+      {/* APPLICATION DETAILS MODAL */}
+      {selectedAppModal && (
+        <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 z-[9999] w-screen h-screen bg-slate-950/85 backdrop-blur-xl flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
+          <div className="max-w-lg w-full bg-slate-900 text-white rounded-3xl overflow-hidden border border-sky-500/30 shadow-2xl p-6 space-y-5 relative my-auto">
+            
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                  {selectedAppModal.type || 'Event'}
+                </span>
+                <h4 className="font-bold text-base text-white truncate max-w-xs">{selectedAppModal.title}</h4>
+              </div>
+              <button
+                onClick={() => setSelectedAppModal(null)}
+                className="p-1.5 rounded-xl bg-slate-800 text-slate-400 hover:text-white transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+
+              {/* EVENT SPECIFIC METADATA CARD */}
+              {(selectedAppModal.type === 'event' || selectedAppModal.type === 'training' || selectedAppModal.type === 'activity') && (
+                <div className="p-4 rounded-2xl bg-sky-500/10 border border-sky-500/20 space-y-2 text-slate-300">
+                  <p className="text-[10px] uppercase font-bold text-sky-400">Event / Activity Details</p>
+                  <p className="flex items-center gap-2 font-medium text-white">
+                    <Calendar className="w-4 h-4 text-sky-400 shrink-0" />
+                    <span>Date: {selectedAppModal.date || 'August 28, 2026'}</span>
+                  </p>
+                  <p className="flex items-center gap-2 font-medium text-white">
+                    <MapPin className="w-4 h-4 text-sky-400 shrink-0" />
+                    <span>Venue: {selectedAppModal.venue || 'AICTE IDEA Lab, TGPCET'}</span>
+                  </p>
+                  <p className="flex items-center gap-2 font-medium text-white">
+                    <User className="w-4 h-4 text-sky-400 shrink-0" />
+                    <span>IDEA Lab Incharge: {selectedAppModal.organizer || 'Dr. Neeraj Waijode'}</span>
+                  </p>
+                </div>
+              )}
+
+              {/* APPLICANT INFO */}
+              <div className="p-4 rounded-2xl bg-slate-800/60 border border-slate-800 space-y-2">
+                <p className="text-[10px] uppercase font-bold text-slate-400">Applicant Details</p>
+                <p className="font-bold text-sm text-white">{selectedAppModal.applicant_name || `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'Participant'}</p>
+                <p className="text-slate-300">{selectedAppModal.applicant_email || user?.email} • {selectedAppModal.applicant_phone || user?.phone || 'Phone N/A'}</p>
+                <p className="text-slate-400">{selectedAppModal.branch || selectedAppModal.education || user?.current_education || 'B.Tech'} {selectedAppModal.department ? `(${selectedAppModal.department})` : ''}</p>
+                <p className="text-slate-500 text-[11px]">Registered On: {selectedAppModal.created_at || selectedAppModal.date || 'Recent'}</p>
+              </div>
+
+              {/* DESCRIPTION / OVERVIEW */}
+              {(selectedAppModal.abstract || selectedAppModal.description) && (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] uppercase font-bold text-slate-400">Overview & Summary</p>
+                  <p className="text-slate-300 leading-relaxed p-3 rounded-2xl bg-slate-800/40 border border-slate-800/60">
+                    {selectedAppModal.abstract || selectedAppModal.description}
+                  </p>
+                </div>
+              )}
+
+              {/* STATUS FOR PROJECTS */}
+              {(selectedAppModal.type === 'project' || selectedAppModal.type === 'proposal') ? (
+                <div className="p-3.5 rounded-2xl bg-slate-800/60 border border-slate-800 flex items-center justify-between">
+                  <span className="font-bold text-slate-400">Project Status</span>
+                  <span className={`px-3 py-1 rounded-full font-bold text-[11px] uppercase ${
+                    selectedAppModal.status === 'approved'
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                      : selectedAppModal.status === 'rejected'
+                      ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+                      : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                  }`}>
+                    {selectedAppModal.status || 'Under Review'}
+                  </span>
+                </div>
+              ) : (
+                <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between text-emerald-300 font-bold">
+                  <span className="flex items-center gap-1.5 text-xs">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>Registration Status</span>
+                  </span>
+                  <span className="px-3 py-1 rounded-full text-[10px] uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    Confirmed & Registered
+                  </span>
+                </div>
+              )}
+
+              {/* PDF ATTACHMENT */}
+              {selectedAppModal.pdf_url && (
+                <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-emerald-300 font-bold">
+                    <FileText className="w-4 h-4 text-emerald-400" />
+                    <span>Project Proposal PDF</span>
+                  </div>
+                  <a
+                    href={selectedAppModal.pdf_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-3 py-1 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition"
+                  >
+                    View PDF
+                  </a>
+                </div>
+              )}
+
+              {/* INCHARGE COMMENTS */}
+              {selectedAppModal.incharge_message && (
+                <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 space-y-1">
+                  <p className="font-bold text-[10px] uppercase">Incharge Feedback:</p>
+                  <p>{selectedAppModal.incharge_message}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="pt-2 border-t border-slate-800 flex justify-end">
+              <button
+                onClick={() => setSelectedAppModal(null)}
+                className="px-5 py-2.5 rounded-xl font-bold text-xs bg-slate-800 hover:bg-slate-700 text-white transition"
+              >
+                Close Details
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );

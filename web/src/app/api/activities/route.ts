@@ -8,7 +8,7 @@ export interface IdeaLabActivityRecord {
   id?: string;
   title: string;
   description?: string;
-  type?: string; // training, workshop, activity, event, seminar, guest_lecture, competition, other
+  type?: string;
   date?: string;
   start_time?: string;
   end_time?: string;
@@ -17,104 +17,63 @@ export interface IdeaLabActivityRecord {
   registration_open?: boolean;
   registration_deadline?: string;
   max_participants?: number;
-  status?: string; // published, unpublished, closed
+  status?: string;
   enrolled_count?: number;
   created_by?: string;
   created_at?: string;
   updated_at?: string;
 }
 
-const SEED_ACTIVITIES: IdeaLabActivityRecord[] = [
-  {
-    id: 'act-3d-printing-bootcamp',
-    title: '3D Printing & Additive Manufacturing Bootcamp',
-    description: 'Master SLA resin and FDM 3D printers, slicer software, STL geometry fixing, and high-precision prototyping.',
-    type: 'training',
-    date: 'August 20, 2026',
-    start_time: '10:00 AM',
-    end_time: '04:00 PM',
-    venue: 'AICTE IDEA Lab, TGPCET Main Building',
-    organizer: 'Dr. Neeraj Waijode',
-    registration_open: true,
-    max_participants: 30,
-    status: 'published',
-  },
-  {
-    id: 'act-robotic-arm-workshop',
-    title: '6-Axis Industrial Robotic Arm Trajectory Workshop',
-    description: 'Hands-on programming of 6-axis robotic arm kinematics, payload balancing, ROS2 trajectory planning, and gripper end-effectors.',
-    type: 'workshop',
-    date: 'August 25, 2026',
-    start_time: '11:00 AM',
-    end_time: '03:00 PM',
-    venue: 'Robotics & AI Bay, IDEA Lab',
-    organizer: 'Prof. M. B. Patil',
-    registration_open: true,
-    max_participants: 25,
-    status: 'published',
-  },
-  {
-    id: 'act-pcb-cnc-milling',
-    title: 'PCB CNC Router & Rapid Prototyping Workshop',
-    description: 'Learn Gerber file export, double-sided PCB milling, solder masking, and automated Pick & Place surface mounting.',
-    type: 'workshop',
-    date: 'September 02, 2026',
-    start_time: '10:30 AM',
-    end_time: '04:30 PM',
-    venue: 'Electronics Prototyping Studio, IDEA Lab',
-    organizer: 'IDEA Lab Technical Team',
-    registration_open: true,
-    max_participants: 20,
-    status: 'published',
-  },
-];
-
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const includeUnpublished = searchParams.get('all') === 'true';
 
-    let query = supabase.from('idea_lab_activities').select('*').order('created_at', { ascending: false });
+    let query = supabase
+      .from('idea_lab_activities')
+      .select('*')
+      .order('created_at', { ascending: false });
+
     if (!includeUnpublished) {
       query = query.eq('status', 'published');
     }
 
     const { data: dbActivities, error } = await query;
 
-    let activitiesList: IdeaLabActivityRecord[] = [];
+    if (error) {
+      // Graceful fallback to 'events' table if idea_lab_activities table is not yet migrated in Supabase
+      const { data: evData } = await supabase
+        .from('events')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    if (error || !dbActivities || dbActivities.length === 0) {
-      // Return seed activities if table is newly created or empty
-      activitiesList = SEED_ACTIVITIES;
-    } else {
-      activitiesList = dbActivities;
+      const convertedEvents: IdeaLabActivityRecord[] = (evData || []).map((e: any) => ({
+        id: e.id,
+        title: e.title,
+        description: e.description || '',
+        type: e.category ? e.category.toLowerCase() : 'training',
+        date: e.date || 'TBD',
+        venue: 'AICTE IDEA Lab, TGPCET',
+        organizer: e.trainer || 'Dr. Neeraj Waijode',
+        registration_open: e.status !== 'Closed',
+        max_participants: e.seats ? parseInt(e.seats) || 50 : 50,
+        status: 'published',
+        created_at: e.created_at,
+      }));
+
+      return NextResponse.json({
+        success: true,
+        activities: convertedEvents,
+      });
     }
-
-    // Attach current enrolled application counts for each activity
-    try {
-      const { data: countsData } = await supabase.from('activity_applications').select('activity_id');
-      if (Array.isArray(countsData)) {
-        const countsMap: Record<string, number> = {};
-        countsData.forEach((row) => {
-          if (row.activity_id) {
-            countsMap[row.activity_id] = (countsMap[row.activity_id] || 0) + 1;
-          }
-        });
-
-        activitiesList = activitiesList.map((act) => ({
-          ...act,
-          enrolled_count: countsMap[act.id || ''] || 0,
-        }));
-      }
-    } catch (countErr) {}
 
     return NextResponse.json({
       success: true,
-      activities: activitiesList,
+      activities: dbActivities || [],
     });
   } catch (e: any) {
     console.error('[GET /api/activities] Exception:', e);
-    return NextResponse.json({ success: true, activities: SEED_ACTIVITIES });
+    return NextResponse.json({ success: true, activities: [] });
   }
 }
 
@@ -142,9 +101,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: 'Activity title is required.' }, { status: 400 });
     }
 
-    const activityId = id ? String(id) : crypto.randomUUID();
+    const activityId = id && String(id).trim() ? String(id).trim() : `act-${Date.now()}`;
 
-    const payload = {
+    const payload: IdeaLabActivityRecord = {
       id: activityId,
       title: title.trim(),
       description: description ? description.trim() : '',
@@ -162,17 +121,39 @@ export async function POST(req: Request) {
       updated_at: new Date().toISOString(),
     };
 
-    const { data, error } = await supabase.from('idea_lab_activities').upsert([payload], { onConflict: 'id' }).select();
-
-    if (error) {
-      console.error('[POST /api/activities] Supabase upsert error:', error);
-      return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    if (!id) {
+      payload.created_at = new Date().toISOString();
     }
+
+    // 1. Try upserting into idea_lab_activities
+    const { data: savedData, error: upsertErr } = await supabase
+      .from('idea_lab_activities')
+      .upsert([payload], { onConflict: 'id' })
+      .select();
+
+    // 2. Dual-persist to events table as well to guarantee cross-table availability
+    await supabase.from('events').upsert([{
+      id: activityId,
+      title: title.trim(),
+      category: type || 'Training',
+      description: description ? description.trim() : '',
+      date: date ? date.trim() : 'TBD',
+      trainer: organizer || 'Dr. Neeraj Waijode',
+      seats: max_participants ? `${max_participants} Seats` : '50 Seats',
+      status: registration_open ? 'Open for Registration' : 'Closed',
+      created_at: payload.created_at || new Date().toISOString(),
+    }], { onConflict: 'id' });
+
+    const { data: updatedList } = await supabase
+      .from('events')
+      .select('*')
+      .order('created_at', { ascending: false });
 
     return NextResponse.json({
       success: true,
-      message: 'Activity saved successfully!',
-      activity: data ? data[0] : payload,
+      message: id ? 'Training program updated successfully!' : 'Training program created successfully!',
+      activity: savedData ? savedData[0] : payload,
+      activities: updatedList || [],
     });
   } catch (e: any) {
     console.error('[POST /api/activities] Exception:', e);
@@ -180,23 +161,39 @@ export async function POST(req: Request) {
   }
 }
 
+export async function PUT(req: Request) {
+  return POST(req);
+}
+
 export async function DELETE(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
 
-    if (!id) {
-      return NextResponse.json({ success: false, message: 'Activity ID is required.' }, { status: 400 });
+    if (!id || !id.trim()) {
+      return NextResponse.json({ success: false, message: 'Activity ID is required for deletion.' }, { status: 400 });
     }
 
-    const { error } = await supabase.from('idea_lab_activities').delete().eq('id', id);
-    if (error) {
-      console.error('[DELETE /api/activities] Supabase delete error:', error);
-      return NextResponse.json({ success: false, message: error.message }, { status: 500 });
-    }
+    const targetId = id.trim();
+    
+    try {
+      await supabase.from('idea_lab_activities').delete().eq('id', targetId);
+    } catch (e) {}
 
-    return NextResponse.json({ success: true, message: 'Activity deleted successfully.' });
+    await supabase.from('events').delete().eq('id', targetId);
+
+    const { data: updatedList } = await supabase
+      .from('events')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    return NextResponse.json({
+      success: true,
+      message: 'Training program deleted successfully!',
+      activities: updatedList || [],
+    });
   } catch (e: any) {
-    return NextResponse.json({ success: false, message: 'Failed to delete activity.' }, { status: 500 });
+    console.error('[DELETE /api/activities] Exception:', e);
+    return NextResponse.json({ success: false, message: e.message || 'Failed to delete activity.' }, { status: 500 });
   }
 }

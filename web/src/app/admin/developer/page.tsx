@@ -4,14 +4,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useRealtimeSync } from '@/context/RealtimeContext';
-import UpdatesCarousel from '@/components/UpdatesCarousel';
-import { UpdateItem } from '@/app/api/updates/route';
+import { ConfirmModal } from '@/components/ConfirmModal';
 import {
-  KeyRound,
   Users,
-  Activity,
-  BarChart3,
-  Flame,
+  FileText,
   Bell,
   Send,
   Edit,
@@ -19,26 +15,63 @@ import {
   Trash2,
   CheckCircle2,
   Lock,
-  Layers,
-  Sparkles,
-  Cpu,
-  Printer,
-  Bot,
-  Wrench,
-  Monitor,
   Settings,
   ShieldCheck,
   User,
   X,
   Save,
   Globe,
-  Database,
-  TrendingUp,
   Sliders,
   Check,
   LogOut,
   Zap,
+  Sparkles,
+  Search,
+  Activity,
+  Layers,
+  Calendar,
+  ArrowLeft,
+  BookOpen,
+  HelpCircle,
+  Upload,
+  RefreshCw,
 } from 'lucide-react';
+
+interface NotificationItem {
+  id: string;
+  user_id?: string | null;
+  title: string;
+  message: string;
+  type?: string;
+  is_read?: boolean;
+  created_at?: string;
+}
+
+interface LabEvent {
+  id: string;
+  title: string;
+  category: string;
+  description: string;
+  date: string;
+  trainer: string;
+  seats: string;
+  status: string;
+}
+
+interface IdeaLabActivityRecord {
+  id?: string;
+  title: string;
+  description?: string;
+  type?: string;
+  date?: string;
+  start_time?: string;
+  end_time?: string;
+  venue?: string;
+  organizer?: string;
+  registration_open?: boolean;
+  max_participants?: number;
+  status?: string;
+}
 
 interface SectionDetail {
   id: string;
@@ -51,227 +84,436 @@ interface SectionDetail {
   image_url: string;
 }
 
-const INITIAL_SECTIONS: SectionDetail[] = [
-  {
-    id: 'software-cell',
-    title: 'Software Cell',
-    subtitle: 'High Performance Workstations & Prototyping Suites',
-    description: 'High-performance computing workstations hosting industry-standard tools including AutoCAD, Autodesk Fusion 360, VS Code, SolidWorks, and simulation frameworks.',
-    equipments: ['Intel i9 RTX Workstations', 'AutoCAD Studio', 'Autodesk Fusion 360', 'VS Code IDE', 'MATLAB & Simulink'],
-    section_head: 'Prof. A. K. Sharma',
-    section_head_title: 'Head of Software Prototyping Cell',
-    image_url: 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=1200&q=80',
-  },
-  {
-    id: 'iot-pcb-design',
-    title: 'IoT & PCB Design',
-    subtitle: 'Embedded Systems & Automated PCB Prototyping',
-    description: 'Specialized facility housing IoT microcontrollers, sensors, communication modules, and a CNC IoT PCB Milling and Etching machine for rapid circuit fabrication.',
-    equipments: ['CNC IoT PCB Design Machine', 'Oscilloscopes & Logic Analyzers', 'Soldering Stations', 'ESP32 & STM32 Boards'],
-    section_head: 'Dr. R. V. Deshmukh',
-    section_head_title: 'Head of Embedded Systems & IoT',
-    image_url: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80',
-  },
-  {
-    id: '3d-printing-prototyping',
-    title: '3D Printing & Prototyping',
-    subtitle: 'Additive Manufacturing & Rapid Modeling',
-    description: 'Features dual industrial-grade 3D printers for high-precision additive manufacturing using PLA, ABS, PETG, and SLA resin materials.',
-    equipments: ['Industrial Dual FDM 3D Printer', 'Precision Resin SLA 3D Printer', 'Handheld 3D Laser Scanner'],
-    section_head: 'Prof. S. N. Kulkarni',
-    section_head_title: 'Head of Additive Manufacturing',
-    image_url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=1200&q=80',
-  },
-  {
-    id: 'robotics-automation',
-    title: 'Robotics & Automation',
-    subtitle: 'Industrial Robotics & Precision CNC Machining',
-    description: 'State-of-the-art facility featuring a 6-Axis Industrial Robotic Arm, CNC Lathe, and CNC Milling Machine for autonomous manufacturing research.',
-    equipments: ['6-Axis Industrial Robotic Arm', 'CNC Milling Machine', 'Precision CNC Lathe Machine', 'PLC Trainer Kits'],
-    section_head: 'Prof. M. B. Patil',
-    section_head_title: 'Head of Robotics & Mechatronics',
-    image_url: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1200&q=80',
-  },
-  {
-    id: 'machining-fabrication',
-    title: 'Machining & Fabrication',
-    subtitle: 'Heavy Metalworking, Laser Cutting & CNC Routing',
-    description: 'Includes heavy-duty metal fabrication tools, precision CO2 Laser Cutting Machine, CNC Router for wood/plastics/metals, and industrial lathe machines.',
-    equipments: ['High Precision CO2 Laser Cutter', 'Heavy Duty CNC Router', 'Industrial Mechanical Lathe', 'MIG/TIG Welding'],
-    section_head: 'Prof. V. P. Joshi',
-    section_head_title: 'Head of Manufacturing & Fabrication',
-    image_url: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=1200&q=80',
-  },
-];
+interface UserProfile {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone?: string;
+  college_id?: string;
+  education?: string;
+  role?: string;
+  created_at?: string;
+}
+
+function formatDateForPicker(dateStr?: string): string {
+  if (!dateStr) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+  try {
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+  } catch (e) {}
+  return '';
+}
+
+function formatDateForDisplay(yyyyMmDd: string): string {
+  if (!yyyyMmDd) return '';
+  try {
+    const parts = yyyyMmDd.split('-');
+    if (parts.length === 3) {
+      const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+      }
+    }
+  } catch (e) {}
+  return yyyyMmDd;
+}
+
+interface ApplicationItem {
+  id: string;
+  applicant_name: string;
+  applicant_email: string;
+  education?: string;
+  title: string;
+  type: string;
+  description: string;
+  status: string;
+  created_at?: string;
+}
 
 export default function DeveloperDashboardPage() {
   const { isSuperAdmin2, user, updateProfile, logout } = useAuth();
   const { triggerGlobalSync } = useRealtimeSync('*', () => { fetchLiveData(); });
 
-  const [activeTab, setActiveTab] = useState<'sections_cms' | 'updates_cms' | 'analytics' | 'heatmap' | 'notifications' | 'site_settings' | 'account'>('sections_cms');
-  const [updatesList, setUpdatesList] = useState<UpdateItem[]>([]);
+  // Navigation tab state: 'apply_edit' | 'applications' | 'users_details' | 'app_settings'
+  const [activeTab, setActiveTab] = useState<'apply_edit' | 'applications' | 'users_details' | 'app_settings'>('apply_edit');
 
-  const fetchUpdatesList = useCallback(async () => {
-    try {
-      const res = await fetch('/api/updates', { cache: 'no-store' });
-      const data = await res.json();
-      if (data.success && Array.isArray(data.updates)) {
-        setUpdatesList(data.updates);
-      }
-    } catch (e) {
-      console.error('Error fetching updates in dev admin:', e);
-    }
-  }, []);
-  
-  const [sections, setSections] = useState<SectionDetail[]>([]);
-  const [editingSection, setEditingSection] = useState<SectionDetail | null>(null);
-  const [equipmentInput, setEquipmentInput] = useState('');
-  const [saveMessage, setSaveMessage] = useState('');
+  // Stats state
+  const [liveStats, setLiveStats] = useState({
+    totalUsers: 0,
+    totalProjectRequests: 0,
+    totalNotifications: 0,
+  });
 
+  // Notifications State (Limit 10)
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
   const [broadcastTitle, setBroadcastTitle] = useState('');
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [broadcastSuccess, setBroadcastSuccess] = useState(false);
 
-  const [siteConfig, setSiteConfig] = useState({
-    heroTitle: 'AICTE IDEA LAB TGPCET NAGPUR',
-    heroSubtitle: 'Empowering Student Innovators with 5 Technical Prototyping Sections',
-    maintenanceMode: false,
-    contactEmail: 'idealab@tgpcet.ac.in',
-    contactPhone: '+91 712 2810001',
+  // --- APPLY BUTTON EDIT STATE ---
+  // 1. Project Form Settings State
+  const [projectFormSettings, setProjectFormSettings] = useState({
+    titleQuestion: 'What is your Innovation Project / Idea Title?',
+    problemQuestion: 'Describe the Problem Statement & Technical Challenge',
+    descriptionQuestion: 'Detailed Project Abstract & Proposed Hardware/Software Solution',
+    requirePdfUpload: true,
+    eligibilityNote: 'Open for all student innovators & faculty teams at TGPCET AICTE IDEA LAB.',
   });
 
-  const [profileForm, setProfileForm] = useState({
-    first_name: user?.first_name || 'Darshan',
-    last_name: user?.last_name || 'Developer',
-    email: user?.email || 'darshan@tgpcet.ac.in',
-    phone: user?.phone || '+91 9123456789',
-    college_id: user?.college_id || 'CSI-2026-001',
-    address: user?.address || 'DRT-VERSE HQ, Nagpur',
+  // 2. Events Form State
+  const [eventsList, setEventsList] = useState<LabEvent[]>([]);
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<LabEvent | null>(null);
+  const [eventForm, setEventForm] = useState<Partial<LabEvent>>({
+    title: '',
+    category: 'Event',
+    description: '',
+    date: 'August 25, 2026',
+    trainer: 'Dr. Neeraj Waijode',
+    seats: '30 Seats',
+    status: 'Open for Registration',
   });
+
+  // 3. Training Form State
+  const [trainingsList, setTrainingsList] = useState<IdeaLabActivityRecord[]>([]);
+  const [showTrainingModal, setShowTrainingModal] = useState(false);
+  const [editingTraining, setEditingTraining] = useState<IdeaLabActivityRecord | null>(null);
+  const [trainingForm, setTrainingForm] = useState<Partial<IdeaLabActivityRecord>>({
+    title: '',
+    description: '',
+    type: 'training',
+    date: 'September 01, 2026',
+    venue: 'AICTE IDEA Lab, TGPCET',
+    organizer: 'Dr. Neeraj Waijode',
+    max_participants: 25,
+    status: 'published',
+  });
+
+  // Applications & Users State
+  const [applications, setApplications] = useState<ApplicationItem[]>([]);
+  const [usersList, setUsersList] = useState<UserProfile[]>([]);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+
+  // App Settings / Sections CMS State
+  const [sections, setSections] = useState<SectionDetail[]>([]);
+  const [editingSection, setEditingSection] = useState<SectionDetail | null>(null);
+  const [saveMessage, setSaveMessage] = useState('');
+
   const [newPasswordInput, setNewPasswordInput] = useState('');
   const [confirmPasswordInput, setConfirmPasswordInput] = useState('');
   const [accountStatusMsg, setAccountStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  const [liveStats, setLiveStats] = useState({
-    totalUsers: 0,
-    totalProjectRequests: 15,
-    totalNotifications: 8,
-    analyticsHits: '2,440 Hits',
-    appHeatmapPeak: '/ (Peak 94%)',
-  });
-
-  // App Heatmap Activity Data
-  const heatmapData = [
-    { route: '/ (Landing Page)', hits: 820, intensity: 'bg-emerald-500', percent: 92 },
-    { route: '/sections (Technical Sections)', hits: 580, intensity: 'bg-sky-500', percent: 75 },
-    { route: '/apply (Project Proposals)', hits: 410, intensity: 'bg-cyan-500', percent: 62 },
-    { route: '/projects (Prototypes Feed)', hits: 340, intensity: 'bg-indigo-500', percent: 50 },
-    { route: '/admin (Superadmin Consoles)', hits: 290, intensity: 'bg-amber-500', percent: 42 },
-  ];
-
+  // Fetch all live data from backend APIs
   const fetchLiveData = useCallback(async () => {
     try {
-      fetchUpdatesList();
-      const secRes = await fetch('/api/sections', { cache: 'no-store' });
-      const secData = await secRes.json();
-      if (secData.success && Array.isArray(secData.sections)) {
-        setSections(secData.sections);
-        localStorage.setItem('idea_lab_sections_data', JSON.stringify(secData.sections));
-      }
+      const [
+        statsRes,
+        notifRes,
+        eventsRes,
+        trainingsRes,
+        appsRes,
+        usersRes,
+        secRes,
+        configRes,
+      ] = await Promise.all([
+        fetch('/api/admin/stats', { cache: 'no-store' }),
+        fetch('/api/notifications', { cache: 'no-store' }),
+        fetch('/api/events', { cache: 'no-store' }),
+        fetch('/api/activities?all=true', { cache: 'no-store' }),
+        fetch('/api/applications', { cache: 'no-store' }),
+        fetch('/api/users', { cache: 'no-store' }),
+        fetch('/api/sections', { cache: 'no-store' }),
+        fetch('/api/apply-config', { cache: 'no-store' }),
+      ]);
 
-      const statsRes = await fetch('/api/admin/stats', { cache: 'no-store' });
-      const statsData = await statsRes.json();
+      const [
+        statsData,
+        notifData,
+        eventsData,
+        trainingsData,
+        appsData,
+        usersData,
+        secData,
+        configData,
+      ] = await Promise.all([
+        statsRes.json().catch(() => ({})),
+        notifRes.json().catch(() => ({})),
+        eventsRes.json().catch(() => ({})),
+        trainingsRes.json().catch(() => ({})),
+        appsRes.json().catch(() => ({})),
+        usersRes.json().catch(() => ({})),
+        secRes.json().catch(() => ({})),
+        configRes.json().catch(() => ({})),
+      ]);
+
       if (statsData.success && statsData.stats) {
         setLiveStats({
           totalUsers: statsData.stats.totalUsers || 0,
           totalProjectRequests: statsData.stats.totalProjectRequests || 0,
           totalNotifications: statsData.stats.totalNotifications || 0,
-          analyticsHits: statsData.stats.analyticsHits || '2,440 Hits',
-          appHeatmapPeak: statsData.stats.appHeatmapPeak || '/ (Peak 94%)',
         });
       }
+
+      if (notifData.success && Array.isArray(notifData.notifications)) {
+        setNotifications(notifData.notifications.slice(0, 10));
+        setUnreadCount(notifData.unreadCount || notifData.notifications.filter((n: NotificationItem) => !n.is_read).length);
+      }
+
+      if (eventsData.success && Array.isArray(eventsData.events)) {
+        setEventsList(eventsData.events);
+      }
+
+      if (trainingsData.success && Array.isArray(trainingsData.activities)) {
+        setTrainingsList(trainingsData.activities);
+      }
+
+      if (appsData.success && Array.isArray(appsData.applications)) {
+        setApplications(appsData.applications);
+      }
+
+      if (usersData.success && Array.isArray(usersData.users)) {
+        setUsersList(usersData.users);
+      }
+
+      if (secData.success && Array.isArray(secData.sections)) {
+        setSections(secData.sections);
+      }
+
+      if (configData.success && configData.config) {
+        setProjectFormSettings(configData.config);
+      }
     } catch (e) {
-      console.error('Error fetching developer live metrics:', e);
+      console.error('Error fetching live data in developer admin:', e);
     }
-  }, [fetchUpdatesList]);
+  }, []);
+
+  useRealtimeSync('*', fetchLiveData);
 
   useEffect(() => {
-    if (user) {
-      setProfileForm({
-        first_name: user.first_name || 'Darshan',
-        last_name: user.last_name || 'Developer',
-        email: user.email || 'darshan@tgpcet.ac.in',
-        phone: user.phone || '+91 9123456789',
-        college_id: user.college_id || 'CSI-2026-001',
-        address: user.address || 'DRT-VERSE HQ, Nagpur',
-      });
-    }
-
     fetchLiveData();
-    const interval = setInterval(fetchLiveData, 4000);
-    return () => clearInterval(interval);
-  }, [user, fetchLiveData]);
+  }, [fetchLiveData]);
 
-  const totalUsers = liveStats.totalUsers;
-  const analyticsHits = liveStats.analyticsHits;
-  const appHeatmapPeak = liveStats.appHeatmapPeak;
-  const totalProjectRequests = liveStats.totalProjectRequests;
-  const totalNotifications = liveStats.totalNotifications;
+  const [isSavingProjectSettings, setIsSavingProjectSettings] = useState(false);
+  const [isSavingEvent, setIsSavingEvent] = useState(false);
+  const [isSavingTraining, setIsSavingTraining] = useState(false);
+  const [isDeletingItem, setIsDeletingItem] = useState(false);
 
-  const handleSaveSection = async (e: React.FormEvent) => {
+  const [confirmModalState, setConfirmModalState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+
+  // Project Form Settings Save Handler
+  const handleSaveProjectFormSettings = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingSection) return;
-
-    const updated = sections.map((s) => (s.id === editingSection.id ? editingSection : s));
-    setSections(updated);
-    localStorage.setItem('idea_lab_sections_data', JSON.stringify(updated));
-
+    setIsSavingProjectSettings(true);
     try {
-      await fetch('/api/sections', {
+      const res = await fetch('/api/apply-config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editingSection),
+        body: JSON.stringify(projectFormSettings),
       });
-    } catch (err) {
-      console.error('Failed to sync section edit to server:', err);
+      const data = await res.json();
+      if (data.success) {
+        setSaveMessage('Project Application Form settings saved permanently to Supabase database!');
+        setTimeout(() => setSaveMessage(''), 3500);
+        triggerGlobalSync();
+      } else {
+        setSaveMessage(`Failed to save settings: ${data.message}`);
+      }
+    } catch (err: any) {
+      console.error('Failed to save project form settings:', err);
+      setSaveMessage('Error saving settings to Supabase database.');
+    } finally {
+      setIsSavingProjectSettings(false);
     }
-
-    setSaveMessage(`Section "${editingSection.title}" updated successfully across Web & Mobile apps!`);
-    setTimeout(() => setSaveMessage(''), 4000);
-    setEditingSection(null);
   };
 
-  const handleAddEquipment = () => {
-    if (!equipmentInput.trim() || !editingSection) return;
-    setEditingSection({
-      ...editingSection,
-      equipments: [...editingSection.equipments, equipmentInput.trim()],
-    });
-    setEquipmentInput('');
-  };
-
-  const handleRemoveEquipment = (index: number) => {
-    if (!editingSection) return;
-    setEditingSection({
-      ...editingSection,
-      equipments: editingSection.equipments.filter((_, i) => i !== index),
-    });
-  };
-
-  const handleBroadcast = (e: React.FormEvent) => {
+  // Event Add/Edit Save Handler
+  const handleSaveEvent = async (e: React.FormEvent) => {
     e.preventDefault();
-    setBroadcastSuccess(true);
-    setTimeout(() => {
-      setBroadcastSuccess(false);
-      setBroadcastTitle('');
-      setBroadcastMessage('');
-    }, 3500);
+    if (!eventForm.title || !eventForm.title.trim()) return;
+
+    setIsSavingEvent(true);
+    try {
+      const res = await fetch('/api/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(eventForm),
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.events)) {
+        setEventsList(data.events);
+        setSaveMessage(editingEvent ? 'Event updated permanently in Supabase!' : 'Event created permanently in Supabase!');
+        setTimeout(() => setSaveMessage(''), 3000);
+        setShowEventModal(false);
+        setEditingEvent(null);
+        setEventForm({
+          title: '',
+          category: 'Event',
+          description: '',
+          date: '',
+          trainer: 'Dr. Neeraj Waijode',
+          seats: '25 Seats',
+          status: 'Open for Registration',
+        });
+        triggerGlobalSync();
+      } else {
+        setSaveMessage(`Failed to save event: ${data.message}`);
+      }
+    } catch (err: any) {
+      console.error('Failed to save event:', err);
+      setSaveMessage('Error saving event to Supabase database.');
+    } finally {
+      setIsSavingEvent(false);
+    }
   };
 
-  const handleSaveSiteConfig = (e: React.FormEvent) => {
+  const handleDeleteEvent = (id: string) => {
+    setConfirmModalState({
+      isOpen: true,
+      title: 'Delete Event',
+      message: 'Are you sure you want to delete this event? This action will remove it permanently from Supabase database.',
+      onConfirm: async () => {
+        setIsDeletingItem(true);
+        try {
+          const res = await fetch(`/api/events?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+          const data = await res.json();
+          if (data.success && Array.isArray(data.events)) {
+            setEventsList(data.events);
+            setSaveMessage('Event deleted permanently from Supabase!');
+            setTimeout(() => setSaveMessage(''), 3000);
+            triggerGlobalSync();
+          } else {
+            setSaveMessage(`Failed to delete event: ${data.message}`);
+          }
+        } catch (err: any) {
+          console.error('Failed to delete event:', err);
+          setSaveMessage('Error deleting event from Supabase database.');
+        } finally {
+          setIsDeletingItem(false);
+          setConfirmModalState((prev) => ({ ...prev, isOpen: false }));
+        }
+      },
+    });
+  };
+
+  // Training Add/Edit Save Handler
+  const handleSaveTraining = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaveMessage('Master site configuration updated successfully!');
-    setTimeout(() => setSaveMessage(''), 4000);
+    if (!trainingForm.title || !trainingForm.title.trim()) return;
+
+    setIsSavingTraining(true);
+    try {
+      const res = await fetch('/api/activities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(trainingForm),
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (Array.isArray(data.activities)) {
+          setTrainingsList(data.activities);
+        }
+        setSaveMessage(editingTraining ? 'Training program updated permanently in Supabase!' : 'Training program created permanently in Supabase!');
+        setTimeout(() => setSaveMessage(''), 3000);
+        setShowTrainingModal(false);
+        setEditingTraining(null);
+        setTrainingForm({
+          title: '',
+          description: '',
+          type: 'training',
+          date: '',
+          venue: 'AICTE IDEA Lab, TGPCET',
+          organizer: 'Dr. Neeraj Waijode',
+          max_participants: 25,
+        });
+        triggerGlobalSync();
+      } else {
+        setSaveMessage(`Failed to save training program: ${data.message}`);
+      }
+    } catch (err: any) {
+      console.error('Failed to save training program:', err);
+      setSaveMessage('Error saving training program to Supabase database.');
+    } finally {
+      setIsSavingTraining(false);
+    }
+  };
+
+  const handleDeleteTraining = (id: string) => {
+    setConfirmModalState({
+      isOpen: true,
+      title: 'Delete Training Program',
+      message: 'Are you sure you want to delete this training program? This action will remove it permanently from Supabase database.',
+      onConfirm: async () => {
+        setIsDeletingItem(true);
+        try {
+          const res = await fetch(`/api/activities?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+          const data = await res.json();
+          if (data.success && Array.isArray(data.activities)) {
+            setTrainingsList(data.activities);
+            setSaveMessage('Training program deleted permanently from Supabase!');
+            setTimeout(() => setSaveMessage(''), 3000);
+            triggerGlobalSync();
+          } else {
+            setSaveMessage(`Failed to delete training program: ${data.message}`);
+          }
+        } catch (err: any) {
+          console.error('Failed to delete training program:', err);
+          setSaveMessage('Error deleting training program from Supabase database.');
+        } finally {
+          setIsDeletingItem(false);
+          setConfirmModalState((prev) => ({ ...prev, isOpen: false }));
+        }
+      },
+    });
+  };
+
+  // Broadcast Notification Handler
+  const handleSendNotification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!broadcastTitle || !broadcastMessage) return;
+
+    try {
+      const res = await fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: broadcastTitle,
+          message: broadcastMessage,
+          type: 'system',
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setBroadcastSuccess(true);
+        setBroadcastTitle('');
+        setBroadcastMessage('');
+        setTimeout(() => {
+          setBroadcastSuccess(false);
+          setShowBroadcastModal(false);
+        }, 2000);
+        fetchLiveData();
+      }
+    } catch (err) {
+      console.error('Error broadcasting notification:', err);
+    }
   };
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
@@ -287,7 +529,7 @@ export default function DeveloperDashboardPage() {
 
     const ok = await updateProfile({ password: newPasswordInput });
     if (ok) {
-      setAccountStatusMsg({ type: 'success', text: 'Developer Password updated successfully! Use new password on next login.' });
+      setAccountStatusMsg({ type: 'success', text: 'Developer Password updated successfully!' });
       setNewPasswordInput('');
       setConfirmPasswordInput('');
     } else {
@@ -295,755 +537,956 @@ export default function DeveloperDashboardPage() {
     }
   };
 
-  const handleSaveProfileInfo = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const ok = await updateProfile(profileForm);
-    if (ok) {
-      setAccountStatusMsg({ type: 'success', text: 'Developer Profile information saved successfully!' });
-    } else {
-      setAccountStatusMsg({ type: 'error', text: 'Failed to save profile changes.' });
-    }
-  };
-
-  if (!isSuperAdmin2) {
+  const filteredUsers = usersList.filter((u) => {
+    if (!userSearchQuery) return true;
+    const q = userSearchQuery.toLowerCase();
     return (
-      <div className="glass-card p-12 text-center max-w-md mx-auto my-12 space-y-4 border border-rose-500/30">
-        <Lock className="w-12 h-12 text-rose-500 mx-auto" />
-        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Developer Access Restricted</h2>
-        <p className="text-xs text-slate-500">
-          This console is reserved strictly for <strong>Darshan (Lead Developer)</strong>.
-        </p>
-      </div>
+      u.first_name?.toLowerCase().includes(q) ||
+      u.last_name?.toLowerCase().includes(q) ||
+      u.email?.toLowerCase().includes(q) ||
+      u.college_id?.toLowerCase().includes(q)
     );
-  }
+  });
 
   return (
-    <div className="space-y-8 pb-12">
-      {/* HEADER BANNER */}
-      <div className="glass-card p-6 md:p-8 rounded-4xl border border-cyan-500/30 bg-gradient-to-r from-cyan-950 via-slate-900 to-indigo-950 text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-2xl">
-        <div className="space-y-1">
-          <div className="flex items-center space-x-2">
-            <span className="px-3 py-1 rounded-full text-[10px] font-extrabold uppercase bg-cyan-400 text-slate-950 tracking-widest inline-flex items-center space-x-1">
-              <KeyRound className="w-3.5 h-3.5" />
-              <span>DEVELOPER CONSOLE</span>
-            </span>
-            <span className="text-xs text-cyan-300 font-semibold">
-              {profileForm.first_name} {profileForm.last_name} (Developer)
-            </span>
-          </div>
-          <h1 className="text-2xl md:text-3xl font-extrabold">Master Developer Control Suite</h1>
-          <p className="text-xs text-cyan-200">
-            Full editing options for each section & each detail, platform analytics, live app heatmap, and master controls.
-          </p>
-        </div>
-
-        {/* QUICK SETTINGS & PASSWORD CHANGE LINK */}
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => setActiveTab('account')}
-            className="px-4 py-2 rounded-full text-xs font-bold bg-white/10 hover:bg-white/20 text-white border border-white/20 transition flex items-center space-x-1.5"
-          >
-            <KeyRound className="w-3.5 h-3.5 text-amber-400" />
-            <span>Change Password & Profile</span>
-          </button>
-          <button
-            onClick={logout}
-            className="px-4 py-2 rounded-full text-xs font-bold bg-rose-600/90 hover:bg-rose-600 text-white border border-rose-400/30 transition flex items-center space-x-1.5 shadow-lg shadow-rose-950/40"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Sign Out</span>
-          </button>
-        </div>
-      </div>
-
-      {/* FULL DASHBOARD METRICS: (TOTAL USER, ANALYTICS, HEATMAP OF APP, TOTAL PROJECT REQUEST, NOTIFICATION) */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        {/* Metric 1: TOTAL USER */}
-        <div className="glass-card p-4 rounded-3xl border border-cyan-500/20 space-y-1 hover:border-cyan-500/40 transition">
-          <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">TOTAL USER</span>
-          <p className="text-2xl font-extrabold text-slate-900 dark:text-white">{totalUsers}</p>
-          <span className="text-[10px] text-emerald-500 font-bold">Registered Users</span>
-        </div>
-
-        {/* Metric 2: ANALYTICS */}
-        <div className="glass-card p-4 rounded-3xl border border-cyan-500/20 space-y-1 hover:border-cyan-500/40 transition">
-          <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">ANALYTICS</span>
-          <p className="text-2xl font-extrabold text-cyan-500">{analyticsHits}</p>
-          <span className="text-[10px] text-slate-400">Monthly Traffic</span>
-        </div>
-
-        {/* Metric 3: HEATMAP OF APP */}
-        <div className="glass-card p-4 rounded-3xl border border-cyan-500/20 space-y-1 hover:border-cyan-500/40 transition">
-          <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">HEATMAP OF APP</span>
-          <p className="text-2xl font-extrabold text-amber-500">{appHeatmapPeak}</p>
-          <span className="text-[10px] text-amber-500 font-bold">Live Traffic Heatmap</span>
-        </div>
-
-        {/* Metric 4: TOTAL PROJECT REQUEST */}
-        <div className="glass-card p-4 rounded-3xl border border-cyan-500/20 space-y-1 hover:border-cyan-500/40 transition">
-          <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">TOTAL PROJECT REQUEST</span>
-          <p className="text-2xl font-extrabold text-sky-500">{totalProjectRequests}</p>
-          <span className="text-[10px] text-sky-500 font-bold">Applications Total</span>
-        </div>
-
-        {/* Metric 5: NOTIFICATION */}
-        <div className="glass-card p-4 rounded-3xl border border-cyan-500/20 space-y-1 hover:border-cyan-500/40 transition">
-          <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">NOTIFICATION</span>
-          <p className="text-2xl font-extrabold text-indigo-500">{totalNotifications}</p>
-          <span className="text-[10px] text-indigo-500 font-bold">Broadcasts Sent</span>
-        </div>
-      </div>
-
-      {/* NAVIGATION TABS */}
-      <div className="flex flex-wrap gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
-        <button
-          onClick={() => setActiveTab('sections_cms')}
-          className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase transition flex items-center space-x-2 ${
-            activeTab === 'sections_cms'
-              ? 'bg-cyan-400 text-slate-950 shadow-md font-extrabold'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-          }`}
-        >
-          <Layers className="w-4 h-4" />
-          <span>Edit Each Section & Each Detail ({sections.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('updates_cms')}
-          className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase transition flex items-center space-x-2 ${
-            activeTab === 'updates_cms'
-              ? 'bg-cyan-400 text-slate-950 shadow-md font-extrabold'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-          }`}
-        >
-          <Zap className="w-4 h-4 text-amber-400" />
-          <span>Image Updates Carousel ({updatesList.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('analytics')}
-          className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase transition flex items-center space-x-2 ${
-            activeTab === 'analytics'
-              ? 'bg-cyan-400 text-slate-950 shadow-md font-extrabold'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-          }`}
-        >
-          <BarChart3 className="w-4 h-4" />
-          <span>App Analytics</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('heatmap')}
-          className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase transition flex items-center space-x-2 ${
-            activeTab === 'heatmap'
-              ? 'bg-cyan-400 text-slate-950 shadow-md font-extrabold'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-          }`}
-        >
-          <Flame className="w-4 h-4" />
-          <span>Heatmap of App</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('notifications')}
-          className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase transition flex items-center space-x-2 ${
-            activeTab === 'notifications'
-              ? 'bg-cyan-400 text-slate-950 shadow-md font-extrabold'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-          }`}
-        >
-          <Bell className="w-4 h-4" />
-          <span>Broadcast Notifications</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('site_settings')}
-          className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase transition flex items-center space-x-2 ${
-            activeTab === 'site_settings'
-              ? 'bg-cyan-400 text-slate-950 shadow-md font-extrabold'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-          }`}
-        >
-          <Sliders className="w-4 h-4" />
-          <span>Master Site Config</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('account')}
-          className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase transition flex items-center space-x-2 ${
-            activeTab === 'account'
-              ? 'bg-cyan-400 text-slate-950 shadow-md font-extrabold'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-          }`}
-        >
-          <KeyRound className="w-4 h-4 text-amber-400" />
-          <span>Profile & Password</span>
-        </button>
-      </div>
-
-      {saveMessage && (
-        <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-500/30 text-emerald-800 dark:text-emerald-200 text-xs font-bold flex items-center space-x-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-          <span>{saveMessage}</span>
-        </div>
-      )}
-
-      {/* TAB 1: EDIT OPTION FOR EACH SECTION AND EACH DETAIL (CMS EDITOR) */}
-      {activeTab === 'sections_cms' && (
-        <div className="glass-card p-6 md:p-8 rounded-4xl border border-cyan-500/20 space-y-6">
-          <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center space-x-2">
-              <Layers className="w-5 h-5 text-cyan-500" />
-              <span>Section Details Master Editor</span>
-            </h2>
-            <p className="text-xs text-slate-500">
-              SuperAdmin 2 can edit every detail (title, subtitle, description, equipment list, section head, image) of each 5 technical sections.
-            </p>
+    <div className="min-h-screen bg-transparent text-slate-100 p-4 md:p-8 font-sans selection:bg-cyan-500 selection:text-white">
+      <div className="max-w-7xl mx-auto space-y-6">
+        
+        {/* ==================================================================== */}
+        {/* TOP ROUNDED HEADER BAR (Pill shape matching user wireframe design) */}
+        {/* ==================================================================== */}
+        <div className="bg-slate-900/90 border border-slate-800 backdrop-blur-md rounded-full px-6 py-3.5 shadow-xl flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <h1 className="text-base font-bold text-white tracking-wide flex items-center gap-2">
+                SUPERADMIN CONSOLE 2
+                <span className="bg-cyan-500/20 text-cyan-300 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-cyan-500/30">
+                  DEVELOPER ADMIN
+                </span>
+              </h1>
+              <p className="text-xs text-slate-400">
+                Logged in as <span className="text-cyan-300 font-medium">{user?.first_name || 'Darshan'}</span> ({user?.email})
+              </p>
+            </div>
           </div>
 
-          <div className="space-y-4">
-            {sections.map((section, sIdx) => (
-              <div
-                key={section.id}
-                className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/60 border border-cyan-500/15 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-xs"
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              Supabase System Live
+            </div>
+
+            <Link
+              href="/"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-full transition-colors border border-slate-700"
+            >
+              <Globe className="w-3.5 h-3.5" />
+              View Site
+            </Link>
+
+            <button
+              onClick={logout}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 rounded-full border border-rose-500/20 transition-colors"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              Logout
+            </button>
+          </div>
+        </div>
+
+        {/* Global Alert Notification Banner */}
+        {saveMessage && (
+          <div className="bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 px-4 py-3 rounded-xl flex items-center justify-between text-sm animate-fadeIn shadow-lg">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-cyan-400" />
+              <span>{saveMessage}</span>
+            </div>
+            <button onClick={() => setSaveMessage('')} className="text-slate-400 hover:text-white">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* ==================================================================== */}
+        {/* TOP STATS CARDS (3 Columns Grid matching exact user wireframe) */}
+        {/* ==================================================================== */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          
+          {/* Card 1: Total User */}
+          <div className="bg-slate-900/80 border border-slate-800 hover:border-cyan-500/40 transition-all rounded-2xl p-6 shadow-xl flex flex-col justify-between relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-2xl group-hover:bg-cyan-500/10 transition-all" />
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Total User</span>
+              <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-xl text-cyan-400">
+                <Users className="w-6 h-6" />
+              </div>
+            </div>
+            <div>
+              <div className="text-4xl font-extrabold text-white tracking-tight">{liveStats.totalUsers}</div>
+              <p className="text-xs text-slate-400 mt-1">Registered Innovators & Students</p>
+            </div>
+          </div>
+
+          {/* Card 2: Project Requests */}
+          <div className="bg-slate-900/80 border border-slate-800 hover:border-sky-500/40 transition-all rounded-2xl p-6 shadow-xl flex flex-col justify-between relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-sky-500/5 rounded-full blur-2xl group-hover:bg-sky-500/10 transition-all" />
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Project Requests</span>
+              <div className="p-3 bg-sky-500/10 border border-sky-500/20 rounded-xl text-sky-400">
+                <FileText className="w-6 h-6" />
+              </div>
+            </div>
+            <div>
+              <div className="text-4xl font-extrabold text-white tracking-tight">{liveStats.totalProjectRequests}</div>
+              <p className="text-xs text-slate-400 mt-1">Submitted Ideas & Applications</p>
+            </div>
+          </div>
+
+          {/* Card 3: Unread Notifications */}
+          <div className="bg-slate-900/80 border border-slate-800 hover:border-amber-500/40 transition-all rounded-2xl p-6 shadow-xl flex flex-col justify-between relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl group-hover:bg-amber-500/10 transition-all" />
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Unread Notifications</span>
+              <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-400">
+                <Bell className="w-6 h-6" />
+              </div>
+            </div>
+            <div>
+              <div className="text-4xl font-extrabold text-white tracking-tight">{unreadCount}</div>
+              <p className="text-xs text-slate-400 mt-1">Total System Alerts: {liveStats.totalNotifications}</p>
+            </div>
+          </div>
+
+        </div>
+
+        {/* ==================================================================== */}
+        {/* ACTION BUTTON ROW (4 Columns Grid matching exact user wireframe) */}
+        {/* ==================================================================== */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          
+          {/* Button 1: Apply Button Edit */}
+          <button
+            onClick={() => setActiveTab('apply_edit')}
+            className={`py-3.5 px-4 rounded-xl border text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 shadow-lg ${
+              activeTab === 'apply_edit'
+                ? 'bg-cyan-500 text-slate-950 border-cyan-400 shadow-cyan-500/20 ring-2 ring-cyan-400/50'
+                : 'bg-slate-900/90 text-slate-300 border-slate-800 hover:border-slate-700 hover:bg-slate-800/80'
+            }`}
+          >
+            <Edit className="w-4 h-4" />
+            Apply Button Edit
+          </button>
+
+          {/* Button 2: Applications */}
+          <button
+            onClick={() => setActiveTab('applications')}
+            className={`py-3.5 px-4 rounded-xl border text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 shadow-lg ${
+              activeTab === 'applications'
+                ? 'bg-cyan-500 text-slate-950 border-cyan-400 shadow-cyan-500/20 ring-2 ring-cyan-400/50'
+                : 'bg-slate-900/90 text-slate-300 border-slate-800 hover:border-slate-700 hover:bg-slate-800/80'
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            Applications
+          </button>
+
+          {/* Button 3: Users Details */}
+          <button
+            onClick={() => setActiveTab('users_details')}
+            className={`py-3.5 px-4 rounded-xl border text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 shadow-lg ${
+              activeTab === 'users_details'
+                ? 'bg-cyan-500 text-slate-950 border-cyan-400 shadow-cyan-500/20 ring-2 ring-cyan-400/50'
+                : 'bg-slate-900/90 text-slate-300 border-slate-800 hover:border-slate-700 hover:bg-slate-800/80'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            Users Details
+          </button>
+
+          {/* Button 4: App Settings */}
+          <button
+            onClick={() => setActiveTab('app_settings')}
+            className={`py-3.5 px-4 rounded-xl border text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 shadow-lg ${
+              activeTab === 'app_settings'
+                ? 'bg-cyan-500 text-slate-950 border-cyan-400 shadow-cyan-500/20 ring-2 ring-cyan-400/50'
+                : 'bg-slate-900/90 text-slate-300 border-slate-800 hover:border-slate-700 hover:bg-slate-800/80'
+            }`}
+          >
+            <Settings className="w-4 h-4" />
+            App Settings
+          </button>
+
+        </div>
+
+        {/* ==================================================================== */}
+        {/* RECENT NOTIFICATIONS PANEL (Hidden when User Details or Apply Edit is active) */}
+        {/* ==================================================================== */}
+        {activeTab !== 'users_details' && activeTab !== 'apply_edit' && (
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                  <Bell className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-white tracking-wide">Recent Notifications</h2>
+                  <span className="text-xs text-amber-400/90 font-medium">Show only 10 recent notification</span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowBroadcastModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-amber-500/10 transition-all"
               >
-                <div className="flex items-start space-x-4 max-w-2xl">
-                  <div className="w-16 h-16 rounded-2xl overflow-hidden shrink-0 border border-cyan-500/30">
-                    <img src={section.image_url} alt={section.title} className="w-full h-full object-cover" />
-                  </div>
+                <Send className="w-3.5 h-3.5" />
+                Broadcast Notification
+              </button>
+            </div>
 
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-bold uppercase text-cyan-600 dark:text-cyan-400">
-                      Section 0{sIdx + 1}
-                    </span>
-                    <h3 className="font-extrabold text-base text-slate-900 dark:text-white">{section.title}</h3>
-                    <p className="text-slate-600 dark:text-slate-300">{section.subtitle}</p>
-                    <p className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400">
-                      Head: {section.section_head} ({section.section_head_title})
-                    </p>
-                    <div className="flex flex-wrap gap-1 pt-1">
-                      {section.equipments.map((eq, eIdx) => (
-                        <span key={eIdx} className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-cyan-100 dark:bg-cyan-950 text-cyan-700 dark:text-cyan-300">
-                          {eq}
+            {/* List of 10 recent notifications */}
+            <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+              {notifications.length === 0 ? (
+                <div className="text-center py-8 text-slate-500 text-sm">
+                  No recent notifications found.
+                </div>
+              ) : (
+                notifications.slice(0, 10).map((item, idx) => (
+                  <div
+                    key={item.id || idx}
+                    className="bg-slate-950/60 border border-slate-800/80 hover:border-slate-700 rounded-xl p-4 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-cyan-400" />
+                        <h4 className="text-sm font-bold text-slate-100">{item.title}</h4>
+                        <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                          {item.type || 'System'}
                         </span>
-                      ))}
+                      </div>
+                      <p className="text-xs text-slate-400 pl-4">{item.message}</p>
+                    </div>
+                    <div className="text-xs text-slate-500 self-end md:self-center">
+                      {item.created_at ? new Date(item.created_at).toLocaleString() : 'Recent'}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ==================================================================== */}
+        {/* ACTIVE TAB MANAGEMENT CONTENT AREA */}
+        {/* ==================================================================== */}
+        <div className="mt-8 bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-2xl">
+
+          {/* ================================================================== */}
+          {/* TAB 1: APPLY BUTTON EDIT (3 COLUMNS GRID LAYOUT FROM USER IMAGE) */}
+          {/* ================================================================== */}
+          {activeTab === 'apply_edit' && (
+            <div className="space-y-6">
+              
+              {/* Header Title with Back Arrow matching user wireframe */}
+              <div className="flex items-center gap-3 pb-4 border-b border-slate-800">
+                <button
+                  onClick={() => setActiveTab('applications')}
+                  className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-colors border border-slate-700"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+                <div>
+                  <h3 className="text-xl font-extrabold text-white flex items-center gap-2">
+                    Apply Button Edit
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Customize project form questions, add/edit multiple events, and manage training masterclasses.
+                  </p>
+                </div>
+              </div>
+
+              {/* 3 COLUMNS GRID matching exact wireframe layout */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                {/* ------------------------------------------------------------- */}
+                {/* COLUMN 1: Project Form Edit */}
+                {/* ------------------------------------------------------------- */}
+                <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between space-y-4">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-cyan-400" />
+                        <h4 className="text-base font-bold text-white">Project Form edit</h4>
+                      </div>
+                      <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+                        Proposal Form
+                      </span>
+                    </div>
+
+                    <form onSubmit={handleSaveProjectFormSettings} className="space-y-3.5 text-xs">
+                      <div>
+                        <label className="block text-slate-400 font-semibold mb-1">
+                          Project Title Question / Label
+                        </label>
+                        <input
+                          type="text"
+                          value={projectFormSettings.titleQuestion}
+                          onChange={(e) => setProjectFormSettings({ ...projectFormSettings, titleQuestion: e.target.value })}
+                          className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-cyan-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-400 font-semibold mb-1">
+                          Problem Statement Question / Label
+                        </label>
+                        <input
+                          type="text"
+                          value={projectFormSettings.problemQuestion}
+                          onChange={(e) => setProjectFormSettings({ ...projectFormSettings, problemQuestion: e.target.value })}
+                          className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-cyan-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-400 font-semibold mb-1">
+                          Description Question / Label
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={projectFormSettings.descriptionQuestion}
+                          onChange={(e) => setProjectFormSettings({ ...projectFormSettings, descriptionQuestion: e.target.value })}
+                          className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-cyan-500"
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 bg-slate-900/80 border border-slate-800 rounded-xl">
+                        <span className="text-slate-300 font-semibold">Require PDF Upload (.pdf up to 15MB)</span>
+                        <input
+                          type="checkbox"
+                          checked={projectFormSettings.requirePdfUpload}
+                          onChange={(e) => setProjectFormSettings({ ...projectFormSettings, requirePdfUpload: e.target.checked })}
+                          className="w-4 h-4 accent-cyan-500 cursor-pointer"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-400 font-semibold mb-1">
+                          Eligibility Guidance Note
+                        </label>
+                        <input
+                          type="text"
+                          value={projectFormSettings.eligibilityNote}
+                          onChange={(e) => setProjectFormSettings({ ...projectFormSettings, eligibilityNote: e.target.value })}
+                          className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-cyan-500"
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={isSavingProjectSettings}
+                        className="w-full py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl transition-colors shadow-lg shadow-cyan-500/10 flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        {isSavingProjectSettings ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                            <span>Saving Settings...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Save className="w-4 h-4" />
+                            <span>Save Project Form Settings</span>
+                          </>
+                        )}
+                      </button>
+                    </form>
+                  </div>
+                </div>
+
+                {/* ------------------------------------------------------------- */}
+                {/* COLUMN 2: Event Form Edit */}
+                {/* ------------------------------------------------------------- */}
+                <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between space-y-4">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-amber-400" />
+                        <h4 className="text-base font-bold text-white">Event Form edit</h4>
+                      </div>
+
+                      {/* Add Events Button matching wireframe */}
+                      <button
+                        onClick={() => {
+                          setEditingEvent(null);
+                          setEventForm({
+                            title: '',
+                            category: 'Event',
+                            description: '',
+                            date: 'August 28, 2026',
+                            trainer: 'Dr. Neeraj Waijode',
+                            seats: '30 Seats',
+                            status: 'Open for Registration',
+                          });
+                          setShowEventModal(true);
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition-all"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Add Events
+                      </button>
+                    </div>
+
+                    {/* Events List Feed */}
+                    <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+                      {eventsList.length === 0 ? (
+                        <div className="text-center py-10 text-slate-500 text-xs">
+                          No active events. Click "Add Events" above to create one.
+                        </div>
+                      ) : (
+                        eventsList.map((ev) => (
+                          <div key={ev.id} className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-2 relative group hover:border-slate-700 transition-all">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                                {ev.category}
+                              </span>
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  onClick={() => {
+                                    setEditingEvent(ev);
+                                    setEventForm(ev);
+                                    setShowEventModal(true);
+                                  }}
+                                  className="p-1 text-slate-400 hover:text-white bg-slate-800 rounded-md"
+                                >
+                                  <Edit className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteEvent(ev.id)}
+                                  className="p-1 text-rose-400 hover:text-rose-300 bg-rose-500/10 rounded-md"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                            <h5 className="font-bold text-white text-xs">{ev.title}</h5>
+                            <p className="text-[11px] text-slate-400 line-clamp-2">{ev.description}</p>
+                            <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1">
+                              <span>📅 {ev.date}</span>
+                              <span>👤 {ev.trainer}</span>
+                            </div>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
                 </div>
 
-                <button
-                  onClick={() => setEditingSection(section)}
-                  className="px-5 py-2.5 rounded-full font-bold bg-cyan-400 text-slate-950 hover:bg-cyan-300 shadow-md transition flex items-center space-x-1.5 shrink-0"
-                >
-                  <Edit className="w-4 h-4" />
-                  <span>Edit Each Detail</span>
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+                {/* ------------------------------------------------------------- */}
+                {/* COLUMN 3: Training Form Edit */}
+                {/* ------------------------------------------------------------- */}
+                <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between space-y-4">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                      <div className="flex items-center gap-2">
+                        <BookOpen className="w-4 h-4 text-emerald-400" />
+                        <h4 className="text-base font-bold text-white">Training Form edit</h4>
+                      </div>
 
-      {/* TAB: IMAGE UPDATES CAROUSEL CMS */}
-      {activeTab === 'updates_cms' && (
-        <div className="space-y-6">
-          <div className="glass-card p-6 rounded-3xl border border-cyan-500/20 bg-slate-900/40 space-y-2">
-            <h2 className="text-xl font-bold text-white flex items-center space-x-2">
-              <Zap className="w-5 h-5 text-cyan-400" />
-              <span>Homepage Image Updates Slider CMS</span>
-            </h2>
-            <p className="text-xs text-slate-400">
-              Lead Developer CMS control for adding, editing, and deleting homepage updates slides stored in Supabase.
-            </p>
-          </div>
-          <UpdatesCarousel updates={updatesList} isSuperAdmin={true} onRefresh={fetchUpdatesList} />
-        </div>
-      )}
-
-      {/* TAB 2: ANALYTICS */}
-      {activeTab === 'analytics' && (
-        <div className="glass-card p-6 md:p-8 rounded-4xl border border-cyan-500/20 space-y-6">
-          <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center space-x-2">
-              <BarChart3 className="w-5 h-5 text-cyan-500" />
-              <span>Platform Analytics & System Performance</span>
-            </h2>
-            <p className="text-xs text-slate-500">Real-time performance metrics for IDEA LAB Web Portal and Mobile App.</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-            <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/60 border border-cyan-500/10 space-y-2">
-              <span className="font-bold text-slate-500">Monthly Pageviews</span>
-              <p className="text-3xl font-extrabold text-cyan-500">4,850</p>
-              <p className="text-[11px] text-emerald-500 font-semibold flex items-center space-x-1">
-                <TrendingUp className="w-3.5 h-3.5" />
-                <span>+18% vs last month</span>
-              </p>
-            </div>
-
-            <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/60 border border-cyan-500/10 space-y-2">
-              <span className="font-bold text-slate-500">API Response Latency</span>
-              <p className="text-3xl font-extrabold text-emerald-500">42 ms</p>
-              <p className="text-[11px] text-emerald-500 font-semibold">Optimal Speed</p>
-            </div>
-
-            <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/60 border border-cyan-500/10 space-y-2">
-              <span className="font-bold text-slate-500">Database Uptime</span>
-              <p className="text-3xl font-extrabold text-indigo-500">99.98%</p>
-              <p className="text-[11px] text-indigo-500 font-semibold">Supabase Cloud Health OK</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 3: HEATMAP OF APP */}
-      {activeTab === 'heatmap' && (
-        <div className="glass-card p-6 md:p-8 rounded-4xl border border-cyan-500/20 space-y-6">
-          <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center space-x-2">
-              <Flame className="w-5 h-5 text-amber-500" />
-              <span>Heatmap of App (Route & Usage Heatmap)</span>
-            </h2>
-            <p className="text-xs text-slate-500">
-              Live interaction heatmap tracking student engagement across application routes.
-            </p>
-          </div>
-
-          <div className="space-y-4 pt-2">
-            {heatmapData.map((item, idx) => (
-              <div key={idx} className="space-y-1 text-xs">
-                <div className="flex justify-between font-bold text-slate-700 dark:text-slate-200">
-                  <span>{item.route}</span>
-                  <span>{item.hits} visits ({item.percent}% Heat Intensity)</span>
-                </div>
-                <div className="w-full h-4 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden p-0.5">
-                  <div
-                    className={`h-full rounded-full ${item.intensity} transition-all duration-1000`}
-                    style={{ width: `${item.percent}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* TAB 4: BROADCAST NOTIFICATIONS */}
-      {activeTab === 'notifications' && (
-        <div className="glass-card p-6 md:p-8 rounded-4xl border border-cyan-500/20 space-y-6">
-          <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center space-x-2">
-              <Bell className="w-5 h-5 text-cyan-500" />
-              <span>Broadcast Notification to Web & Mobile Apps</span>
-            </h2>
-            <p className="text-xs text-slate-500">Send instant system notifications to all registered users.</p>
-          </div>
-
-          {broadcastSuccess && (
-            <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-500/30 text-emerald-800 dark:text-emerald-200 text-xs font-bold flex items-center space-x-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-              <span>Notification broadcasted live to all Web and Mobile clients!</span>
-            </div>
-          )}
-
-          <form onSubmit={handleBroadcast} className="space-y-4 text-xs max-w-xl">
-            <div>
-              <label className="font-bold text-slate-700 dark:text-slate-300">Notification Title *</label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. IDEA LAB Upgraded with High-Speed 3D Printers"
-                value={broadcastTitle}
-                onChange={(e) => setBroadcastTitle(e.target.value)}
-                className="w-full mt-1 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-medium"
-              />
-            </div>
-
-            <div>
-              <label className="font-bold text-slate-700 dark:text-slate-300">Broadcast Message *</label>
-              <textarea
-                rows={3}
-                required
-                placeholder="Details of system broadcast..."
-                value={broadcastMessage}
-                onChange={(e) => setBroadcastMessage(e.target.value)}
-                className="w-full mt-1 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-medium"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="px-6 py-3 rounded-2xl font-bold text-slate-950 bg-cyan-400 hover:bg-cyan-300 transition flex items-center space-x-2 shadow-lg"
-            >
-              <Send className="w-4 h-4" />
-              <span>Send Master Broadcast</span>
-            </button>
-          </form>
-        </div>
-      )}
-
-      {/* TAB 5: MASTER SITE CONFIG & SETTINGS */}
-      {activeTab === 'site_settings' && (
-        <div className="glass-card p-6 md:p-8 rounded-4xl border border-cyan-500/20 space-y-6">
-          <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center space-x-2">
-              <Sliders className="w-5 h-5 text-cyan-500" />
-              <span>Master Site Config & System Controls</span>
-            </h2>
-            <p className="text-xs text-slate-500">
-              SuperAdmin 2 can toggle maintenance mode, edit global hero texts, and master application parameters.
-            </p>
-          </div>
-
-          <form onSubmit={handleSaveSiteConfig} className="space-y-4 text-xs max-w-xl">
-            <div>
-              <label className="font-bold text-slate-700 dark:text-slate-300">Hero Main Title</label>
-              <input
-                type="text"
-                value={siteConfig.heroTitle}
-                onChange={(e) => setSiteConfig({ ...siteConfig, heroTitle: e.target.value })}
-                className="w-full mt-1 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800"
-              />
-            </div>
-
-            <div>
-              <label className="font-bold text-slate-700 dark:text-slate-300">Hero Subtitle</label>
-              <input
-                type="text"
-                value={siteConfig.heroSubtitle}
-                onChange={(e) => setSiteConfig({ ...siteConfig, heroSubtitle: e.target.value })}
-                className="w-full mt-1 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800"
-              />
-            </div>
-
-            <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/60 border border-cyan-500/10 flex items-center justify-between">
-              <div>
-                <h4 className="font-bold text-slate-900 dark:text-white">Maintenance Mode</h4>
-                <p className="text-slate-500">Temporarily restrict student access for updates</p>
-              </div>
-              <input
-                type="checkbox"
-                checked={siteConfig.maintenanceMode}
-                onChange={(e) => setSiteConfig({ ...siteConfig, maintenanceMode: e.target.checked })}
-                className="w-5 h-5 accent-cyan-400 cursor-pointer"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="px-6 py-3 rounded-2xl font-bold text-slate-950 bg-cyan-400 hover:bg-cyan-300 transition flex items-center space-x-2 shadow-lg"
-            >
-              <Save className="w-4 h-4" />
-              <span>Save Master Config</span>
-            </button>
-          </form>
-        </div>
-      )}
-
-      {/* TAB 6: SUPERADMIN 2 PROFILE & CHANGE PASSWORD */}
-      {activeTab === 'account' && (
-        <div className="glass-card p-6 md:p-8 rounded-4xl border border-cyan-500/20 space-y-8">
-          <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center space-x-2">
-              <KeyRound className="w-5 h-5 text-amber-500" />
-              <span>Developer Profile & Credentials Settings</span>
-            </h2>
-            <p className="text-xs text-slate-500">
-              Update Developer login password, ID/email, and personal details. Configured via <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-cyan-500 font-mono">.env.local</code>.
-            </p>
-          </div>
-
-          {accountStatusMsg && (
-            <div
-              className={`p-4 rounded-2xl border text-xs font-bold flex items-center space-x-2 ${
-                accountStatusMsg.type === 'success'
-                  ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-500/30 text-emerald-800 dark:text-emerald-200'
-                  : 'bg-rose-50 dark:bg-rose-950/60 border-rose-500/30 text-rose-800 dark:text-rose-200'
-              }`}
-            >
-              {accountStatusMsg.type === 'success' ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-              ) : (
-                <X className="w-4 h-4 text-rose-500 shrink-0" />
-              )}
-              <span>{accountStatusMsg.text}</span>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-xs">
-            {/* FORM 1: CHANGE PASSWORD */}
-            <div className="p-6 rounded-3xl bg-slate-50 dark:bg-slate-800/60 border border-cyan-500/15 space-y-4">
-              <div className="flex items-center space-x-2 text-cyan-600 dark:text-cyan-400 font-bold text-sm">
-                <Lock className="w-4 h-4" />
-                <span>Change Developer Password</span>
-              </div>
-
-              <form onSubmit={handleUpdatePassword} className="space-y-3">
-                <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300">New Password *</label>
-                  <input
-                    type="password"
-                    required
-                    placeholder="Enter new password"
-                    value={newPasswordInput}
-                    onChange={(e) => setNewPasswordInput(e.target.value)}
-                    className="w-full mt-1 p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Confirm New Password *</label>
-                  <input
-                    type="password"
-                    required
-                    placeholder="Re-enter new password"
-                    value={confirmPasswordInput}
-                    onChange={(e) => setConfirmPasswordInput(e.target.value)}
-                    className="w-full mt-1 p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full py-3 rounded-2xl font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-md transition flex items-center justify-center space-x-2"
-                >
-                  <KeyRound className="w-4 h-4" />
-                  <span>Update Developer Password</span>
-                </button>
-              </form>
-            </div>
-
-            {/* FORM 2: PROFILE DETAILS */}
-            <div className="p-6 rounded-3xl bg-slate-50 dark:bg-slate-800/60 border border-cyan-500/15 space-y-4">
-              <div className="flex items-center space-x-2 text-indigo-600 dark:text-indigo-400 font-bold text-sm">
-                <User className="w-4 h-4" />
-                <span>Developer Personal Profile Details</span>
-              </div>
-
-              <form onSubmit={handleSaveProfileInfo} className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="font-bold text-slate-700 dark:text-slate-300">First Name</label>
-                    <input
-                      type="text"
-                      required
-                      value={profileForm.first_name}
-                      onChange={(e) => setProfileForm({ ...profileForm, first_name: e.target.value })}
-                      className="w-full mt-1 p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700"
-                    />
-                  </div>
-                  <div>
-                    <label className="font-bold text-slate-700 dark:text-slate-300">Last Name</label>
-                    <input
-                      type="text"
-                      required
-                      value={profileForm.last_name}
-                      onChange={(e) => setProfileForm({ ...profileForm, last_name: e.target.value })}
-                      className="w-full mt-1 p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Developer Email / Superadmin ID</label>
-                  <input
-                    type="email"
-                    required
-                    value={profileForm.email}
-                    onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
-                    className="w-full mt-1 p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="font-bold text-slate-700 dark:text-slate-300">Phone</label>
-                    <input
-                      type="text"
-                      value={profileForm.phone}
-                      onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
-                      className="w-full mt-1 p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700"
-                    />
-                  </div>
-                  <div>
-                    <label className="font-bold text-slate-700 dark:text-slate-300">Developer ID</label>
-                    <input
-                      type="text"
-                      value={profileForm.college_id}
-                      onChange={(e) => setProfileForm({ ...profileForm, college_id: e.target.value })}
-                      className="w-full mt-1 p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full py-3 rounded-2xl font-bold bg-cyan-400 hover:bg-cyan-300 text-slate-950 shadow-md transition flex items-center justify-center space-x-2"
-                >
-                  <Save className="w-4 h-4" />
-                  <span>Save Profile Details</span>
-                </button>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* EDIT MODAL FOR EACH SECTION AND EACH DETAIL */}
-      {editingSection && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 max-w-2xl w-full rounded-4xl p-6 sm:p-8 border border-cyan-500/30 shadow-2xl space-y-5 text-xs my-8 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-start border-b border-slate-100 dark:border-slate-800 pb-3">
-              <div>
-                <span className="text-[10px] font-extrabold uppercase text-cyan-500">SuperAdmin 2 CMS Editor</span>
-                <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">
-                  Edit Section Details: {editingSection.title}
-                </h3>
-              </div>
-              <button
-                onClick={() => setEditingSection(null)}
-                className="text-slate-400 hover:text-slate-600 font-bold"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveSection} className="space-y-4">
-              {/* TITLE & SUBTITLE */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Section Title *</label>
-                  <input
-                    type="text"
-                    required
-                    value={editingSection.title}
-                    onChange={(e) => setEditingSection({ ...editingSection, title: e.target.value })}
-                    className="w-full mt-1 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Subtitle / Tagline *</label>
-                  <input
-                    type="text"
-                    required
-                    value={editingSection.subtitle}
-                    onChange={(e) => setEditingSection({ ...editingSection, subtitle: e.target.value })}
-                    className="w-full mt-1 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
-                  />
-                </div>
-              </div>
-
-              {/* DESCRIPTION */}
-              <div>
-                <label className="font-bold text-slate-700 dark:text-slate-300">Detailed Description *</label>
-                <textarea
-                  rows={3}
-                  required
-                  value={editingSection.description}
-                  onChange={(e) => setEditingSection({ ...editingSection, description: e.target.value })}
-                  className="w-full mt-1 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
-                />
-              </div>
-
-              {/* SECTION HEAD & HEAD TITLE */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Section Head Name *</label>
-                  <input
-                    type="text"
-                    required
-                    value={editingSection.section_head}
-                    onChange={(e) => setEditingSection({ ...editingSection, section_head: e.target.value })}
-                    className="w-full mt-1 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Section Head Designation *</label>
-                  <input
-                    type="text"
-                    required
-                    value={editingSection.section_head_title}
-                    onChange={(e) => setEditingSection({ ...editingSection, section_head_title: e.target.value })}
-                    className="w-full mt-1 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
-                  />
-                </div>
-              </div>
-
-              {/* IMAGE URL */}
-              <div>
-                <label className="font-bold text-slate-700 dark:text-slate-300">Section Image URL *</label>
-                <input
-                  type="text"
-                  required
-                  value={editingSection.image_url}
-                  onChange={(e) => setEditingSection({ ...editingSection, image_url: e.target.value })}
-                  className="w-full mt-1 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
-                />
-              </div>
-
-              {/* EQUIPMENTS LIST EDITOR */}
-              <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-800">
-                <label className="font-bold text-slate-700 dark:text-slate-300">
-                  Installed Equipments & Machines:
-                </label>
-                <div className="flex space-x-2">
-                  <input
-                    type="text"
-                    placeholder="Add machine or software name..."
-                    value={equipmentInput}
-                    onChange={(e) => setEquipmentInput(e.target.value)}
-                    className="flex-1 p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddEquipment}
-                    className="px-4 py-2.5 rounded-2xl font-bold bg-cyan-400 text-slate-950 hover:bg-cyan-300 transition"
-                  >
-                    + Add
-                  </button>
-                </div>
-
-                <div className="flex flex-wrap gap-2 pt-2">
-                  {editingSection.equipments.map((eq, idx) => (
-                    <span
-                      key={idx}
-                      className="px-3 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 flex items-center space-x-1.5 border border-cyan-500/20"
-                    >
-                      <span>{eq}</span>
+                      {/* Add Events/Training Button matching wireframe */}
                       <button
-                        type="button"
-                        onClick={() => handleRemoveEquipment(idx)}
-                        className="text-rose-500 hover:text-rose-700 font-bold ml-1"
+                        onClick={() => {
+                          setEditingTraining(null);
+                          setTrainingForm({
+                            title: '',
+                            description: '',
+                            type: 'training',
+                            date: 'September 05, 2026',
+                            venue: 'AICTE IDEA Lab, TGPCET',
+                            organizer: 'Dr. Neeraj Waijode',
+                            max_participants: 30,
+                            status: 'published',
+                          });
+                          setShowTrainingModal(true);
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition-all"
                       >
-                        ✕
+                        <Plus className="w-3.5 h-3.5" />
+                        Add Events
                       </button>
-                    </span>
+                    </div>
+
+                    {/* Training List Feed */}
+                    <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+                      {trainingsList.length === 0 ? (
+                        <div className="text-center py-10 text-slate-500 text-xs">
+                          No active training programs. Click "Add Events" above to add one.
+                        </div>
+                      ) : (
+                        trainingsList.map((tr) => (
+                          <div key={tr.id} className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-2 relative group hover:border-slate-700 transition-all">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                                {tr.type || 'Training'}
+                              </span>
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  onClick={() => {
+                                    setEditingTraining(tr);
+                                    setTrainingForm(tr);
+                                    setShowTrainingModal(true);
+                                  }}
+                                  className="p-1 text-slate-400 hover:text-white bg-slate-800 rounded-md"
+                                >
+                                  <Edit className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteTraining(tr.id || '')}
+                                  className="p-1 text-rose-400 hover:text-rose-300 bg-rose-500/10 rounded-md"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                            <h5 className="font-bold text-white text-xs">{tr.title}</h5>
+                            <p className="text-[11px] text-slate-400 line-clamp-2">{tr.description}</p>
+                            <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1">
+                              <span>📅 {tr.date}</span>
+                              <span>👥 Max: {tr.max_participants || 30}</span>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+          )}
+
+          {/* TAB 2: APPLICATIONS */}
+          {activeTab === 'applications' && (
+            <div className="space-y-6">
+              <div className="pb-4 border-b border-slate-800">
+                <h3 className="text-lg font-bold text-white">Student Project Applications & Requests</h3>
+                <p className="text-xs text-slate-400">Review all project requests and student innovation proposals.</p>
+              </div>
+
+              {applications.length === 0 ? (
+                <div className="text-center py-12 text-slate-500 text-sm">
+                  No project requests found.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 uppercase font-semibold">
+                      <tr>
+                        <th className="p-3">Applicant</th>
+                        <th className="p-3">Project Title</th>
+                        <th className="p-3">Type</th>
+                        <th className="p-3">Status</th>
+                        <th className="p-3">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60">
+                      {applications.map((app) => (
+                        <tr key={app.id} className="hover:bg-slate-800/40">
+                          <td className="p-3">
+                            <div className="font-bold text-white">{app.applicant_name}</div>
+                            <div className="text-slate-400 text-[11px]">{app.applicant_email}</div>
+                          </td>
+                          <td className="p-3 font-semibold text-cyan-300">{app.title}</td>
+                          <td className="p-3 uppercase text-[10px] text-slate-400">{app.type}</td>
+                          <td className="p-3">
+                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                              app.status === 'approved' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' :
+                              app.status === 'rejected' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' :
+                              'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                            }`}>
+                              {app.status}
+                            </span>
+                          </td>
+                          <td className="p-3 text-slate-500">{app.created_at ? new Date(app.created_at).toLocaleDateString() : 'Recent'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 3: USERS DETAILS */}
+          {activeTab === 'users_details' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between flex-wrap gap-4 pb-4 border-b border-slate-800">
+                <div>
+                  <h3 className="text-lg font-bold text-white">Registered Users & Student Details</h3>
+                  <p className="text-xs text-slate-400">Total {usersList.length} registered profiles in Supabase database.</p>
+                </div>
+                <div className="relative">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                  <input
+                    type="text"
+                    placeholder="Search users..."
+                    value={userSearchQuery}
+                    onChange={(e) => setUserSearchQuery(e.target.value)}
+                    className="pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500 w-64"
+                  />
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 uppercase font-semibold">
+                    <tr>
+                      <th className="p-3">User Name</th>
+                      <th className="p-3">Email Address</th>
+                      <th className="p-3">College ID / Education</th>
+                      <th className="p-3">Role</th>
+                      <th className="p-3">Joined Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {filteredUsers.map((u) => (
+                      <tr key={u.id} className="hover:bg-slate-800/40">
+                        <td className="p-3 font-bold text-white">
+                          {u.first_name} {u.last_name}
+                        </td>
+                        <td className="p-3 text-cyan-300">{u.email}</td>
+                        <td className="p-3 text-slate-400">{u.college_id || u.education || 'B.Tech'}</td>
+                        <td className="p-3">
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+                            {u.role || 'user'}
+                          </span>
+                        </td>
+                        <td className="p-3 text-slate-500">{u.created_at ? new Date(u.created_at).toLocaleDateString() : 'Active'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: APP SETTINGS */}
+          {activeTab === 'app_settings' && (
+            <div className="space-y-8">
+              <div className="pb-4 border-b border-slate-800">
+                <h3 className="text-lg font-bold text-white">System & Developer Account Settings</h3>
+                <p className="text-xs text-slate-400">Configure technical section details and update developer security credentials.</p>
+              </div>
+
+              {/* Technical Sections Editor */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-bold text-cyan-400 uppercase tracking-wider">5 Technical Sections Manager</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {sections.map((sec) => (
+                    <div key={sec.id} className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-2">
+                      <h5 className="font-bold text-white text-sm">{sec.title}</h5>
+                      <p className="text-xs text-slate-400 line-clamp-2">{sec.subtitle}</p>
+                      <button
+                        onClick={() => setEditingSection(sec)}
+                        className="mt-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 rounded-lg border border-slate-700"
+                      >
+                        Edit Section Details
+                      </button>
+                    </div>
                   ))}
                 </div>
               </div>
 
-              <div className="flex space-x-3 pt-4">
-                <button
-                  type="submit"
-                  className="flex-1 py-3 rounded-2xl font-bold bg-cyan-400 text-slate-950 hover:bg-cyan-300 shadow-md transition flex items-center justify-center space-x-2"
-                >
-                  <Save className="w-4 h-4" />
-                  <span>Save Section Changes</span>
-                </button>
+              {/* Developer Password Update */}
+              <div className="bg-slate-950 border border-slate-800 rounded-xl p-6 space-y-4 max-w-lg">
+                <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-cyan-400" />
+                  Change Developer Password
+                </h4>
+                {accountStatusMsg && (
+                  <div className={`p-3 rounded-lg text-xs font-semibold ${
+                    accountStatusMsg.type === 'success' ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-300 border border-rose-500/20'
+                  }`}>
+                    {accountStatusMsg.text}
+                  </div>
+                )}
+                <form onSubmit={handleUpdatePassword} className="space-y-3 text-xs">
+                  <div>
+                    <label className="text-slate-400 font-semibold mb-1 block">New Password</label>
+                    <input
+                      type="password"
+                      value={newPasswordInput}
+                      onChange={(e) => setNewPasswordInput(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-white"
+                      placeholder="••••••••"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-slate-400 font-semibold mb-1 block">Confirm New Password</label>
+                    <input
+                      type="password"
+                      value={confirmPasswordInput}
+                      onChange={(e) => setConfirmPasswordInput(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-white"
+                      placeholder="••••••••"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-lg"
+                  >
+                    Update Password
+                  </button>
+                </form>
+              </div>
+
+            </div>
+          )}
+
+        </div>
+
+      </div>
+
+      {/* Broadcast Modal */}
+      {showBroadcastModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-white">Broadcast New Notification</h3>
+              <button onClick={() => setShowBroadcastModal(false)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            {broadcastSuccess ? (
+              <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-sm font-semibold rounded-xl text-center">
+                ✓ Notification sent successfully to all users!
+              </div>
+            ) : (
+              <form onSubmit={handleSendNotification} className="space-y-4 text-xs">
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1">Title</label>
+                  <input
+                    type="text"
+                    required
+                    value={broadcastTitle}
+                    onChange={(e) => setBroadcastTitle(e.target.value)}
+                    placeholder="Notice Title..."
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1">Message</label>
+                  <textarea
+                    required
+                    rows={3}
+                    value={broadcastMessage}
+                    onChange={(e) => setBroadcastMessage(e.target.value)}
+                    placeholder="Enter notification message details..."
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowBroadcastModal(false)}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-semibold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl font-bold"
+                  >
+                    Send Broadcast
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Add/Edit Event Modal */}
+      {showEventModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-lg w-full space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-white">
+                {editingEvent ? 'Edit Event' : 'Add New Event'}
+              </h3>
+              <button onClick={() => setShowEventModal(false)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleSaveEvent} className="space-y-3 text-xs">
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1">Event Title</label>
+                <input
+                  type="text"
+                  required
+                  value={eventForm.title || ''}
+                  onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })}
+                  placeholder="e.g. 6-Axis Industrial Robotic Arm Trajectory Hackathon"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1">Category</label>
+                  <select
+                    value={eventForm.category || 'Event'}
+                    onChange={(e) => setEventForm({ ...eventForm, category: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white"
+                  >
+                    <option value="Event">Event</option>
+                    <option value="Workshop">Workshop</option>
+                    <option value="Training">Training</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1">Date (Calendar Picker)</label>
+                  <input
+                    type="date"
+                    value={formatDateForPicker(eventForm.date)}
+                    onChange={(e) => {
+                      const formatted = formatDateForDisplay(e.target.value);
+                      setEventForm({ ...eventForm, date: formatted || e.target.value });
+                    }}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white [color-scheme:dark] cursor-pointer focus:outline-none focus:border-cyan-500"
+                  />
+                  {eventForm.date && (
+                    <p className="text-[10px] text-cyan-400 font-medium mt-1">
+                      Selected: {eventForm.date}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1">Description</label>
+                <textarea
+                  rows={3}
+                  value={eventForm.description || ''}
+                  onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })}
+                  placeholder="Event details..."
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setEditingSection(null)}
-                  className="px-5 py-3 rounded-2xl font-bold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 transition"
+                  onClick={() => setShowEventModal(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-semibold"
                 >
                   Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingEvent}
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl font-bold disabled:opacity-50"
+                >
+                  {isSavingEvent ? 'Saving...' : 'Save Event'}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* Add/Edit Training Modal */}
+      {showTrainingModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-lg w-full space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-white">
+                {editingTraining ? 'Edit Training Program' : 'Add New Training Program'}
+              </h3>
+              <button onClick={() => setShowTrainingModal(false)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleSaveTraining} className="space-y-3 text-xs">
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1">Training Title</label>
+                <input
+                  type="text"
+                  required
+                  value={trainingForm.title || ''}
+                  onChange={(e) => setTrainingForm({ ...trainingForm, title: e.target.value })}
+                  placeholder="e.g. SLA Resin 3D Printing & Slicer Masterclass"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1">Date (Calendar Picker)</label>
+                  <input
+                    type="date"
+                    value={formatDateForPicker(trainingForm.date)}
+                    onChange={(e) => {
+                      const formatted = formatDateForDisplay(e.target.value);
+                      setTrainingForm({ ...trainingForm, date: formatted || e.target.value });
+                    }}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white [color-scheme:dark] cursor-pointer focus:outline-none focus:border-emerald-500"
+                  />
+                  {trainingForm.date && (
+                    <p className="text-[10px] text-emerald-400 font-medium mt-1">
+                      Selected: {trainingForm.date}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1">Max Participants</label>
+                  <input
+                    type="number"
+                    value={trainingForm.max_participants || 25}
+                    onChange={(e) => setTrainingForm({ ...trainingForm, max_participants: Number(e.target.value) })}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1">Description</label>
+                <textarea
+                  rows={3}
+                  value={trainingForm.description || ''}
+                  onChange={(e) => setTrainingForm({ ...trainingForm, description: e.target.value })}
+                  placeholder="Training syllabus and practical modules..."
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowTrainingModal(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingTraining}
+                  className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl font-bold disabled:opacity-50"
+                >
+                  {isSavingTraining ? 'Saving...' : 'Save Training'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Global Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModalState.isOpen}
+        title={confirmModalState.title}
+        message={confirmModalState.message}
+        isLoading={isDeletingItem}
+        onConfirm={confirmModalState.onConfirm}
+        onClose={() => setConfirmModalState({ ...confirmModalState, isOpen: false })}
+      />
+
     </div>
   );
 }

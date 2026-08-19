@@ -47,6 +47,7 @@ CREATE INDEX IF NOT EXISTS idx_email_otps_email_purpose ON public.email_otps (em
 -- ------------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.applications (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  event_id TEXT DEFAULT 'project-form',
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
   applicant_name TEXT DEFAULT '',
   applicant_email TEXT DEFAULT '',
@@ -57,7 +58,8 @@ CREATE TABLE IF NOT EXISTS public.applications (
   pdf_url TEXT DEFAULT '',
   status TEXT DEFAULT 'pending',
   incharge_message TEXT DEFAULT '',
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT unique_user_event_app UNIQUE (event_id, user_id)
 );
 
 -- ------------------------------------------------------------------------------
@@ -216,6 +218,64 @@ CREATE TABLE IF NOT EXISTS public.site_contact (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- ------------------------------------------------------------------------------
+-- 14. UPDATES TABLE (Announcement & Image Banner Updates Carousel)
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.updates (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  tag TEXT DEFAULT 'UPDATES',
+  description TEXT DEFAULT '',
+  image_url TEXT DEFAULT '',
+  link_url TEXT DEFAULT '',
+  badge_color TEXT DEFAULT 'sky',
+  is_active BOOLEAN DEFAULT true,
+  display_order INT DEFAULT 1,
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ------------------------------------------------------------------------------
+-- 15. IDEA LAB ACTIVITIES TABLE (Training Programs & Workshops)
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.idea_lab_activities (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT DEFAULT '',
+  type TEXT DEFAULT 'training',
+  date TEXT DEFAULT 'TBD',
+  start_time TEXT DEFAULT '',
+  end_time TEXT DEFAULT '',
+  venue TEXT DEFAULT 'AICTE IDEA Lab, TGPCET',
+  organizer TEXT DEFAULT '',
+  registration_open BOOLEAN DEFAULT true,
+  max_participants INTEGER DEFAULT 50,
+  status TEXT DEFAULT 'published',
+  created_by UUID,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ------------------------------------------------------------------------------
+-- 16. PROJECT FORM SETTINGS TABLE
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.project_form_settings (
+  id TEXT PRIMARY KEY DEFAULT 'main_config',
+  title_question TEXT NOT NULL DEFAULT 'What is your Innovation Project / Idea Title?',
+  problem_question TEXT NOT NULL DEFAULT 'Describe the Problem Statement & Technical Challenge',
+  description_question TEXT NOT NULL DEFAULT 'Detailed Project Abstract & Proposed Hardware/Software Solution',
+  require_pdf_upload BOOLEAN DEFAULT true,
+  eligibility_note TEXT DEFAULT 'Open for all student innovators & faculty teams at TGPCET AICTE IDEA LAB.',
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ------------------------------------------------------------------------------
+-- PERFORMANCE INDEXES
+-- ------------------------------------------------------------------------------
+CREATE INDEX IF NOT EXISTS idx_applications_user_event ON public.applications (user_id, event_id);
+CREATE INDEX IF NOT EXISTS idx_events_status_created ON public.events (status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON public.notifications (user_id, is_read);
+
 -- ==============================================================================
 -- ENABLE ROW LEVEL SECURITY & PERMISSIVE POLICIES
 -- ==============================================================================
@@ -233,6 +293,9 @@ ALTER TABLE public.faculty_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.lab_incharge ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.chapter_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.site_contact ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.updates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.idea_lab_activities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.project_form_settings ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Profiles full access" ON public.profiles;
 CREATE POLICY "Profiles full access" ON public.profiles FOR ALL USING (true) WITH CHECK (true);
@@ -272,6 +335,15 @@ CREATE POLICY "Chapter members full access" ON public.chapter_members FOR ALL US
 
 DROP POLICY IF EXISTS "Site contact full access" ON public.site_contact;
 CREATE POLICY "Site contact full access" ON public.site_contact FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Updates full access" ON public.updates;
+CREATE POLICY "Updates full access" ON public.updates FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Activities full access" ON public.idea_lab_activities;
+CREATE POLICY "Activities full access" ON public.idea_lab_activities FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Project form settings full access" ON public.project_form_settings;
+CREATE POLICY "Project form settings full access" ON public.project_form_settings FOR ALL USING (true) WITH CHECK (true);
 
 -- Grant privileges to anon and authenticated roles
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
@@ -470,6 +542,32 @@ ON CONFLICT (id) DO UPDATE SET
   instagram_url = EXCLUDED.instagram_url,
   linkedin_handle = EXCLUDED.linkedin_handle,
   linkedin_url = EXCLUDED.linkedin_url;
+
+-- 7. UPDATES SEED
+INSERT INTO public.updates (id, title, tag, description, image_url, link_url, badge_color, is_active, display_order, updated_at)
+VALUES
+(
+    'upd-1786766035324',
+    'Independence Day',
+    '15 AUGUST',
+    'Celebrating 80th Independence Day at TGPCET AICTE IDEA LAB with student innovations & prototypes.',
+    'https://images.unsplash.com/photo-1532375810709-75b1da00537c?auto=format&fit=crop&w=1200&q=80',
+    '/gallery',
+    'sky',
+    true,
+    1,
+    '2026-08-15T03:53:55.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  tag = EXCLUDED.tag,
+  description = EXCLUDED.description,
+  image_url = EXCLUDED.image_url,
+  link_url = EXCLUDED.link_url,
+  badge_color = EXCLUDED.badge_color,
+  is_active = EXCLUDED.is_active,
+  display_order = EXCLUDED.display_order,
+  updated_at = EXCLUDED.updated_at;
 
 -- Reload schema cache in Supabase PostgREST API
 NOTIFY pgrst, 'reload schema';

@@ -5,72 +5,15 @@ import { FacultyMember, LabInchargeProfile } from '@/types';
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
-const DEFAULT_LAB_INCHARGE: LabInchargeProfile = {
-  name: 'Dr. Neeraj Waijode',
-  title: 'Head & Coordinator, AICTE IDEA LAB • TGPCET',
-  badge: 'LAB INCHARGE & SUPERADMIN',
-  message: '"Our mission is to bridge the gap between academic theory and physical hardware prototyping. We welcome all students to leverage our 3D printers, CNC PCB machines, laser cutters, and 6-axis robotic arms."',
-  photo_url: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=600&q=80',
-};
-
-const DEFAULT_FACULTY_MEMBERS: FacultyMember[] = [
-  {
-    id: 'f1',
-    name: 'Dr. Neeraj Waijode',
-    role: 'Incharge, AICTE IDEA LAB',
-    dept: 'Mechanical Engineering',
-    photo_url: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=600&q=80',
-    display_order: 1,
-  },
-  {
-    id: 'f2',
-    name: 'Prof. A. K. Sharma',
-    role: 'Section Head',
-    dept: 'Software Cell',
-    photo_url: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=600&q=80',
-    display_order: 2,
-  },
-  {
-    id: 'f3',
-    name: 'Dr. R. V. Deshmukh',
-    role: 'Section Head',
-    dept: 'IoT & PCB Design',
-    photo_url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=600&q=80',
-    display_order: 3,
-  },
-  {
-    id: 'f4',
-    name: 'Prof. S. N. Kulkarni',
-    role: 'Section Head',
-    dept: '3D Printing & Prototyping',
-    photo_url: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=600&q=80',
-    display_order: 4,
-  },
-  {
-    id: 'f5',
-    name: 'Prof. M. B. Patil',
-    role: 'Section Head',
-    dept: 'Robotics & Automation',
-    photo_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80',
-    display_order: 5,
-  },
-  {
-    id: 'f6',
-    name: 'Prof. V. P. Joshi',
-    role: 'Section Head',
-    dept: 'Machining & Fabrication',
-    photo_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=600&q=80',
-    display_order: 6,
-  },
-];
-
 export async function GET() {
   try {
-    const { data: inchargeData } = await supabase.from('lab_incharge').select('*').limit(1);
-    const { data: facultyData } = await supabase.from('faculty_members').select('*').order('display_order', { ascending: true });
+    const [{ data: inchargeData }, { data: facultyData }] = await Promise.all([
+      supabase.from('lab_incharge').select('*').limit(1),
+      supabase.from('faculty_members').select('*').order('display_order', { ascending: true }),
+    ]);
 
-    const incharge = inchargeData && inchargeData.length > 0 ? inchargeData[0] : DEFAULT_LAB_INCHARGE;
-    const faculties = facultyData && facultyData.length > 0 ? facultyData : DEFAULT_FACULTY_MEMBERS;
+    const incharge = inchargeData && inchargeData.length > 0 ? inchargeData[0] : null;
+    const faculties = facultyData || [];
 
     return NextResponse.json({
       success: true,
@@ -79,9 +22,10 @@ export async function GET() {
     });
   } catch (e: any) {
     return NextResponse.json({
-      success: true,
-      incharge: DEFAULT_LAB_INCHARGE,
-      faculties: DEFAULT_FACULTY_MEMBERS,
+      success: false,
+      message: e.message || 'Failed to fetch faculty data',
+      incharge: null,
+      faculties: [],
     });
   }
 }
@@ -122,7 +66,7 @@ export async function POST(req: Request) {
         success: true,
         message: 'Lab Incharge profile updated on Supabase cloud database!',
         incharge: updatedIncharge,
-        faculties: facultyData || DEFAULT_FACULTY_MEMBERS,
+        faculties: facultyData || [],
       });
     }
 
@@ -142,7 +86,7 @@ export async function POST(req: Request) {
       name: name.trim(),
       role: role.trim(),
       dept: dept.trim(),
-      photo_url: photo_url || 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=600&q=80',
+      photo_url: photo_url || '',
       display_order: display_order !== undefined ? Number(display_order) : 99,
     };
 
@@ -159,8 +103,8 @@ export async function POST(req: Request) {
       success: true,
       message: 'Faculty member saved to Supabase cloud database!',
       faculty: updatedFaculty,
-      faculties: facultyData || DEFAULT_FACULTY_MEMBERS,
-      incharge: inchargeData && inchargeData.length > 0 ? inchargeData[0] : DEFAULT_LAB_INCHARGE,
+      faculties: facultyData || [],
+      incharge: inchargeData && inchargeData.length > 0 ? inchargeData[0] : null,
     });
   } catch (e: any) {
     console.error('[POST /api/faculty] Error:', e);
@@ -201,7 +145,7 @@ export async function DELETE(req: Request) {
       success: true,
       message: 'Faculty member deleted from Supabase cloud database!',
       faculties: facultyData || [],
-      incharge: inchargeData && inchargeData.length > 0 ? inchargeData[0] : DEFAULT_LAB_INCHARGE,
+      incharge: inchargeData && inchargeData.length > 0 ? inchargeData[0] : null,
     });
   } catch (e: any) {
     console.error('[DELETE /api/faculty] Error:', e);

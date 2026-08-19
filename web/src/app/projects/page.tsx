@@ -75,6 +75,49 @@ function readPdfFile(file: File): Promise<string> {
   });
 }
 
+const INITIAL_PROJECTS: Project[] = [
+  {
+    id: 'p1',
+    title: 'Autonomous AI Inspection Rover',
+    project_type: 'team',
+    status: 'running',
+    team_name: 'IDEA Lab Innovators',
+    description: '6-wheel rocker-bogie rover built with ROS2 and custom CNC-etched PCB motor drivers.',
+    full_detail: '6-wheel rocker-bogie rover built with ROS2 and custom CNC-etched PCB motor drivers for hazardous inspection.',
+    leader_name: 'Darshan',
+    leader_branch: 'Robotics & AI',
+    leader_email: 'darshan@tgpcet.com',
+    leader_photo: '',
+    team_members: [{ name: 'Darshan', branch: 'Robotics & AI', role: 'Team Lead', avatar: '' }],
+    cover_image: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1200&q=80',
+    project_images: ['https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1200&q=80'],
+    tech_stack: ['ROS2', '3D Printing', 'PCB CNC'],
+    pdf_url: '',
+    pdf_name: '',
+    created_at: '2026-08-01',
+  },
+  {
+    id: 'p2',
+    title: 'Smart IoT Agriculture Telemetry',
+    project_type: 'team',
+    status: 'running',
+    team_name: 'AgriTech Cell',
+    description: 'LoRaWAN precision farming soil moisture telemetry with cloud dashboard telemetry.',
+    full_detail: 'LoRaWAN precision farming soil moisture telemetry with cloud dashboard telemetry.',
+    leader_name: 'Neha Verma',
+    leader_branch: 'IoT & Embedded',
+    leader_email: 'neha@tgpcet.com',
+    leader_photo: '',
+    team_members: [{ name: 'Neha Verma', branch: 'IoT & Embedded', role: 'Team Lead', avatar: '' }],
+    cover_image: 'https://images.unsplash.com/photo-1586771107445-d3ca888129ff?auto=format&fit=crop&w=1200&q=80',
+    project_images: ['https://images.unsplash.com/photo-1586771107445-d3ca888129ff?auto=format&fit=crop&w=1200&q=80'],
+    tech_stack: ['LoRaWAN', 'IoT', 'PCB Design'],
+    pdf_url: '',
+    pdf_name: '',
+    created_at: '2026-08-03',
+  },
+];
+
 export default function ProjectsPage() {
   const { user, isSuperAdmin1, isSuperAdmin2 } = useAuth();
 
@@ -93,8 +136,8 @@ export default function ProjectsPage() {
     )
   );
 
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [projects, setProjects] = useState<Project[]>(INITIAL_PROJECTS);
+  const [loading, setLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Search & Filters

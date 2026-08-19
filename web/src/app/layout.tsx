@@ -1,15 +1,34 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { AuthProvider } from '@/context/AuthContext';
 import { RealtimeProvider } from '@/context/RealtimeContext';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
+import { BottomNav } from '@/components/BottomNav';
 
 export const metadata: Metadata = {
   title: 'AICTE IDEA LAB | Tulsiramji Gaikwad Patil College of Engineering & Technology',
   description: 'Official Platform for AICTE IDEA LAB TGPCET Nagpur. Prototyping, 3D Printing, IoT PCB, Robotics, Laser Cutting, and Student Innovation Chapter.',
   keywords: ['AICTE', 'IDEA LAB', 'TGPCET', 'Nagpur', '3D Printing', 'Robotics', 'IoT PCB', 'CNC', 'Darshan', 'Dr. Neeraj Waijode'],
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'AICTE IDEA LAB',
+  },
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#0f172a' },
+  ],
 };
 
 export default function RootLayout({
@@ -41,7 +60,12 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-screen flex flex-col antialiased">
+      <body className="min-h-screen flex flex-col antialiased relative selection:bg-cyan-500 selection:text-white pb-16 md:pb-0">
+        <div className="fixed inset-0 pointer-events-none z-[-1] overflow-hidden">
+          <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-gradient-to-b from-sky-500/15 via-cyan-500/10 to-transparent blur-[120px] rounded-full" />
+          <div className="absolute top-1/3 -right-40 w-[600px] h-[600px] bg-blue-600/10 blur-[140px] rounded-full" />
+          <div className="absolute bottom-10 -left-40 w-[600px] h-[600px] bg-cyan-600/10 blur-[140px] rounded-full" />
+        </div>
         <ThemeProvider>
           <AuthProvider>
             <RealtimeProvider>
@@ -49,6 +73,7 @@ export default function RootLayout({
               <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
                 {children}
               </main>
+              <BottomNav />
               <Footer />
             </RealtimeProvider>
           </AuthProvider>

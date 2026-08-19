@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabaseClient';
-import fs from 'fs';
-import path from 'path';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -20,54 +18,26 @@ export interface UpdateItem {
   updated_at?: string;
 }
 
-const DATA_FILE_PATH = path.join(process.cwd(), 'data', 'updates.json');
-
-// Helper to read persistent local storage file
-function readLocalUpdates(): UpdateItem[] {
-  try {
-    if (fs.existsSync(DATA_FILE_PATH)) {
-      const raw = fs.readFileSync(DATA_FILE_PATH, 'utf8');
-      return JSON.parse(raw);
-    }
-  } catch (err) {
-    console.error('Error reading local updates.json:', err);
-  }
-  return [];
-}
-
-// Helper to write persistent local storage file
-function writeLocalUpdates(updates: UpdateItem[]) {
-  try {
-    const dir = path.dirname(DATA_FILE_PATH);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    fs.writeFileSync(DATA_FILE_PATH, JSON.stringify(updates, null, 2), 'utf8');
-  } catch (err) {
-    console.error('Error writing local updates.json:', err);
-  }
-}
-
 export async function GET() {
   try {
-    // Attempt query from Supabase cloud database
+    // Query directly from Supabase cloud database
     const { data, error } = await supabase
       .from('updates')
       .select('*')
       .order('display_order', { ascending: true })
       .order('created_at', { ascending: false });
 
-    if (!error && Array.isArray(data) && data.length > 0) {
-      writeLocalUpdates(data);
+    if (!error && Array.isArray(data)) {
       return NextResponse.json({ success: true, updates: data });
+    }
+    if (error) {
+      console.warn('[GET /api/updates] Supabase query warning:', error.message);
     }
   } catch (e: any) {
     console.warn('[GET /api/updates] Supabase warning:', e?.message || e);
   }
 
-  // Fallback to local persistent JSON file
-  const localList = readLocalUpdates();
-  return NextResponse.json({ success: true, updates: localList });
+  return NextResponse.json({ success: true, updates: [] });
 }
 
 export async function POST(req: Request) {
@@ -97,28 +67,31 @@ export async function POST(req: Request) {
       updated_at: new Date().toISOString(),
     };
 
-    // 1. Update persistent local disk file
-    const currentList = readLocalUpdates();
-    const existingIndex = currentList.findIndex(u => u.id === updateId);
-    if (existingIndex >= 0) {
-      currentList[existingIndex] = dbPayload;
-    } else {
-      currentList.push(dbPayload);
-    }
-    writeLocalUpdates(currentList);
+    // Upsert directly to Supabase
+    const { data, error } = await supabase
+      .from('updates')
+      .upsert([dbPayload], { onConflict: 'id' })
+      .select();
 
-    // 2. Attempt upsert to Supabase
-    try {
-      await supabase.from('updates').upsert([dbPayload], { onConflict: 'id' });
-    } catch (stErr) {
-      console.warn('[POST /api/updates] Supabase cloud upsert warning:', stErr);
+    if (error) {
+      console.error('[POST /api/updates] Supabase upsert error:', error.message);
+      return NextResponse.json(
+        { success: false, message: `Supabase Error: ${error.message}` },
+        { status: 500 }
+      );
     }
+
+    // Retrieve full updated list from Supabase
+    const { data: refreshedUpdates } = await supabase
+      .from('updates')
+      .select('*')
+      .order('display_order', { ascending: true });
 
     return NextResponse.json({
       success: true,
-      message: 'Update slide saved successfully!',
-      update: dbPayload,
-      updates: currentList,
+      message: 'Update slide saved on Supabase successfully!',
+      update: data ? data[0] : dbPayload,
+      updates: refreshedUpdates || [dbPayload],
     });
   } catch (e: any) {
     console.error('[POST /api/updates] Error:', e);
@@ -147,22 +120,30 @@ export async function DELETE(req: Request) {
 
     const targetId = id.trim();
 
-    // 1. Delete permanently from persistent local disk file
-    const currentList = readLocalUpdates();
-    const filteredList = currentList.filter(u => u.id !== targetId);
-    writeLocalUpdates(filteredList);
+    // Delete directly from Supabase cloud database
+    const { error } = await supabase
+      .from('updates')
+      .delete()
+      .eq('id', targetId);
 
-    // 2. Delete permanently from Supabase cloud database if available
-    try {
-      await supabase.from('updates').delete().eq('id', targetId);
-    } catch (stErr) {
-      console.warn('[DELETE /api/updates] Supabase cloud delete warning:', stErr);
+    if (error) {
+      console.error('[DELETE /api/updates] Supabase delete error:', error.message);
+      return NextResponse.json(
+        { success: false, message: `Supabase Error: ${error.message}` },
+        { status: 500 }
+      );
     }
+
+    // Retrieve full updated list from Supabase
+    const { data: refreshedUpdates } = await supabase
+      .from('updates')
+      .select('*')
+      .order('display_order', { ascending: true });
 
     return NextResponse.json({
       success: true,
-      message: 'Update slide deleted permanently!',
-      updates: filteredList,
+      message: 'Update slide deleted permanently from Supabase!',
+      updates: refreshedUpdates || [],
     });
   } catch (e: any) {
     console.error('[DELETE /api/updates] Error:', e);

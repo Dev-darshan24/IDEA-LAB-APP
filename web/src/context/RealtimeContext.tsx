@@ -95,27 +95,29 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     }
 
-    // Initialize unified Supabase Realtime Channel
+    // Initialize unified Supabase Realtime Channel with reconnect throttling
     try {
-      const channel = supabase
-        .channel('global_db_realtime')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public' },
-          (payload) => {
-            notifyListeners(payload.table, payload);
-          }
-        )
-        .on('broadcast', { event: 'data_changed' }, (evt) => {
-          notifyListeners(evt.payload?.table, evt.payload?.payload);
-        })
-        .subscribe((status) => {
-          if (status === 'SUBSCRIBED') {
-            console.log('⚡ [RealtimeSync] Connected to Supabase Realtime channel');
-          }
-        });
+      if (!supabaseChannelRef.current) {
+        const channel = supabase
+          .channel('global_db_realtime')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public' },
+            (payload) => {
+              notifyListeners(payload.table, payload);
+            }
+          )
+          .on('broadcast', { event: 'data_changed' }, (evt) => {
+            notifyListeners(evt.payload?.table, evt.payload?.payload);
+          })
+          .subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+              console.log('⚡ [RealtimeSync] Connected to Supabase Realtime channel');
+            }
+          });
 
-      supabaseChannelRef.current = channel;
+        supabaseChannelRef.current = channel;
+      }
     } catch (e) {
       console.warn('[RealtimeSync] Supabase realtime connection failed:', e);
     }

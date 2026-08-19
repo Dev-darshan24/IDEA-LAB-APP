@@ -99,27 +99,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Error reading registered users registry:', e);
     }
 
-    // Immediately sync all registered accounts (including Jonny Verse) to Supabase profiles table
-    const syncAllUsersToSupabase = async () => {
-      try {
-        const userEmails = Object.keys(currentRegistry);
-        for (const email of userEmails) {
-          const account = currentRegistry[email];
-          if (account) {
-            await fetch('/api/users', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(account),
-            }).catch(() => {});
-          }
-        }
-        console.log('[AuthContext] Successfully synced all user accounts to Supabase profiles table!');
-      } catch (e) {
-        console.error('[AuthContext] Error syncing accounts to Supabase:', e);
-      }
-    };
-    syncAllUsersToSupabase();
-
     // Check saved active session
     const savedUser = localStorage.getItem('idea_lab_user');
     if (savedUser) {

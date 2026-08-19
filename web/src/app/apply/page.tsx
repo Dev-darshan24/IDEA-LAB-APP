@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import { useRealtimeSync } from '@/context/RealtimeContext';
 import {
   Send,
   FileText,
@@ -62,7 +63,46 @@ export default function ApplyPage() {
   // --- TAB 3: MY APPLICATIONS HISTORY STATE ---
   const [userProposals, setUserProposals] = useState<ProjectProposalRecord[]>([]);
   const [userActivityApps, setUserActivityApps] = useState<ActivityApplicationRecord[]>([]);
+  const [allActivityApps, setAllActivityApps] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+
+  // Fast O(1) Map lookup for user applied activities
+  const appliedActivityIdsMap = React.useMemo(() => {
+    const map = new Map<string, boolean>();
+    if (!user) return map;
+
+    const userEmail = (user.email || '').trim().toLowerCase();
+    const userId = (user.id || '').trim();
+
+    userActivityApps.forEach((app) => {
+      if (app.activity_id) map.set(app.activity_id, true);
+      if (app.id) map.set(app.id, true);
+      if (app.activity_title) map.set(app.activity_title.trim().toLowerCase(), true);
+      if (app.title) map.set(app.title.trim().toLowerCase(), true);
+    });
+
+    allActivityApps.forEach((app) => {
+      const appEmail = (app.applicant_email || app.email || '').trim().toLowerCase();
+      const appUserId = (app.user_id || '').trim();
+      const userMatch = (userEmail && appEmail === userEmail) || (userId && appUserId === userId);
+      if (userMatch) {
+        if (app.activity_id) map.set(app.activity_id, true);
+        if (app.event_id) map.set(app.event_id, true);
+        if (app.id) map.set(app.id, true);
+        if (app.activity_title) map.set(app.activity_title.trim().toLowerCase(), true);
+        if (app.title) map.set(app.title.trim().toLowerCase(), true);
+      }
+    });
+
+    return map;
+  }, [user, userActivityApps, allActivityApps]);
+
+  const isAppliedToActivity = (activityId?: string, activityTitle?: string) => {
+    if (!user) return false;
+    if (activityId && appliedActivityIdsMap.has(activityId)) return true;
+    if (activityTitle && appliedActivityIdsMap.has(activityTitle.trim().toLowerCase())) return true;
+    return false;
+  };
 
   const showError = (msg: string, type: 'proposal' | 'activity' = 'proposal') => {
     if (type === 'proposal') {
@@ -74,17 +114,75 @@ export default function ApplyPage() {
     }
   };
 
-  // Fetch Available Activities from Supabase
+  // --- GLOBAL APPLY FORM CONFIG FROM SUPABASE ---
+  const [formConfig, setFormConfig] = useState({
+    titleQuestion: 'Project Name / Title *',
+    problemQuestion: 'Problem Statement & Objective *',
+    descriptionQuestion: 'Detailed Project Abstract & Technical Requirements *',
+    requirePdfUpload: true,
+    eligibilityNote: 'Open for all student innovators & faculty teams at TGPCET AICTE IDEA LAB.',
+  });
+
+  const fetchApplyConfig = async () => {
+    try {
+      const res = await fetch('/api/apply-config', { cache: 'no-store' });
+      const data = await res.json();
+      if (data.success && data.config) {
+        setFormConfig(data.config);
+      }
+    } catch (e) {
+      console.error('Error fetching apply config:', e);
+    }
+  };
+
+  // Fetch Available Activities & Events globally from Supabase
   const fetchActivities = async () => {
     setLoadingActivities(true);
     try {
-      const res = await fetch('/api/activities', { cache: 'no-store' });
-      const data = await res.json();
-      if (data.success && Array.isArray(data.activities)) {
-        setActivities(data.activities);
+      const [actRes, evRes, appsRes] = await Promise.all([
+        fetch('/api/activities', { cache: 'no-store' }),
+        fetch('/api/events', { cache: 'no-store' }),
+        fetch('/api/activity-applications?all=true', { cache: 'no-store' }),
+      ]);
+      const actData = await actRes.json();
+      const evData = await evRes.json();
+      const appsData = await appsRes.json();
+
+      if (appsData.success && Array.isArray(appsData.applications)) {
+        setAllActivityApps(appsData.applications);
       }
+
+      let combined: IdeaLabActivityRecord[] = [];
+
+      if (actData.success && Array.isArray(actData.activities)) {
+        combined = [...actData.activities];
+      }
+
+      if (evData.success && Array.isArray(evData.events)) {
+        const convertedEvents: IdeaLabActivityRecord[] = evData.events.map((e: any) => ({
+          id: e.id,
+          title: e.title,
+          description: e.description || '',
+          type: e.category ? e.category.toLowerCase() : 'event',
+          date: e.date || 'TBD',
+          venue: 'AICTE IDEA Lab, TGPCET',
+          organizer: e.trainer || 'Dr. Neeraj Waijode',
+          registration_open: e.status !== 'Closed',
+          max_participants: e.seats ? parseInt(e.seats) || 50 : 50,
+          status: 'published',
+        }));
+
+        const existingIds = new Set(combined.map((a) => a.id));
+        convertedEvents.forEach((ce) => {
+          if (!existingIds.has(ce.id)) {
+            combined.push(ce);
+          }
+        });
+      }
+
+      setActivities(combined);
     } catch (e) {
-      console.error('Error fetching activities:', e);
+      console.error('Error fetching activities and events:', e);
     } finally {
       setLoadingActivities(false);
     }
@@ -103,7 +201,7 @@ export default function ApplyPage() {
       }
 
       // 2. Fetch Activity Registrations
-      const actRes = await fetch(`/api/activity-applications?user_id=${user.id}`, { cache: 'no-store' });
+      const actRes = await fetch(`/api/activity-applications?user_id=${user.id}&email=${encodeURIComponent(user.email || '')}`, { cache: 'no-store' });
       const actData = await actRes.json();
       if (actData.success && Array.isArray(actData.applications)) {
         setUserActivityApps(actData.applications);
@@ -115,7 +213,16 @@ export default function ApplyPage() {
     }
   };
 
+  useRealtimeSync('applications', () => {
+    fetchActivities();
+    if (user?.id) fetchUserHistory();
+  });
+  useRealtimeSync('events', () => {
+    fetchActivities();
+  });
+
   useEffect(() => {
+    fetchApplyConfig();
     fetchActivities();
     if (user?.id) {
       fetchUserHistory();
@@ -233,13 +340,19 @@ export default function ApplyPage() {
 
   // Submit Activity Application
   const handleConfirmActivityApplication = async () => {
-    if (!user || !selectedActivity?.id) return;
+    if (!selectedActivity?.id) return;
+    if (!user) {
+      showError('Please log in or register an account to apply for opportunities.', 'activity');
+      return;
+    }
 
     setApplyingActivityId(selectedActivity.id);
 
     const payload = {
       activity_id: selectedActivity.id,
-      user_id: user.id,
+      activity_title: selectedActivity.title || 'Event 1',
+      type: selectedActivity.type ? selectedActivity.type.toLowerCase() : 'event',
+      user_id: user.id || 'guest',
       applicant_name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Participant',
       applicant_email: user.email || '',
       applicant_phone: user.phone || '',
@@ -259,15 +372,43 @@ export default function ApplyPage() {
       const result = await res.json();
 
       if (result.success) {
-        setActivitySuccess(`Your application for "${selectedActivity.title}" has been submitted!`);
+        const newRecord: ActivityApplicationRecord = {
+          id: result.application?.id || crypto.randomUUID(),
+          activity_id: selectedActivity.id,
+          activity_title: selectedActivity.title,
+          title: selectedActivity.title,
+          applicant_name: payload.applicant_name,
+          applicant_email: payload.applicant_email,
+          user_id: payload.user_id,
+          status: 'approved',
+          applied_at: new Date().toISOString(),
+        };
+
+        setUserActivityApps((prev) => [newRecord, ...prev]);
+        setActivitySuccess(`Your application for "${selectedActivity.title}" has been submitted! Check status in your Profile.`);
         setSelectedActivity(null);
 
         fetchActivities();
         fetchUserHistory();
         setTimeout(() => {
           setActivitySuccess('');
-          setActiveTab('history');
-        }, 2000);
+        }, 4000);
+      } else if (result.isDuplicate || res.status === 409) {
+        const newRecord: ActivityApplicationRecord = {
+          id: crypto.randomUUID(),
+          activity_id: selectedActivity.id,
+          activity_title: selectedActivity.title,
+          title: selectedActivity.title,
+          applicant_name: payload.applicant_name,
+          applicant_email: payload.applicant_email,
+          user_id: payload.user_id,
+          status: 'approved',
+          applied_at: new Date().toISOString(),
+        };
+        setUserActivityApps((prev) => [newRecord, ...prev]);
+        setSelectedActivity(null);
+        showError('You have already applied for this event.', 'activity');
+        fetchUserHistory();
       } else {
         showError(result.message || 'Failed to apply for activity.', 'activity');
       }
@@ -279,11 +420,7 @@ export default function ApplyPage() {
     }
   };
 
-  // Helper check if user already registered for an activity
-  const isAppliedToActivity = (activityId?: string) => {
-    if (!activityId) return false;
-    return userActivityApps.some((app) => app.activity_id === activityId);
-  };
+
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 space-y-8">
@@ -356,20 +493,6 @@ export default function ApplyPage() {
               <GraduationCap className="w-4 h-4" />
               <span>Training & Activities</span>
             </button>
-            <button
-              onClick={() => {
-                setActiveTab('history');
-                fetchUserHistory();
-              }}
-              className={`flex-1 min-w-[140px] py-3 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition ${
-                activeTab === 'history'
-                  ? 'bg-sky-600 text-white shadow-lg shadow-sky-500/20'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-sky-500'
-              }`}
-            >
-              <BookOpen className="w-4 h-4" />
-              <span>My Applications ({userProposals.length + userActivityApps.length})</span>
-            </button>
           </div>
 
           {/* AUTO-POPULATED APPLICANT PROFILE BANNER */}
@@ -422,13 +545,15 @@ export default function ApplyPage() {
                     <span>Submit Project Proposal</span>
                   </h3>
                   <p className="text-slate-500 text-[11px]">
-                    Permanent submission for 3D printer, PCB CNC, or robotics lab hardware execution.
+                    {formConfig.eligibilityNote || 'Permanent submission for 3D printer, PCB CNC, or robotics lab hardware execution.'}
                   </p>
                 </div>
 
                 {/* PROJECT NAME */}
                 <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Project Name / Title *</label>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">
+                    {formConfig.titleQuestion || 'Project Name / Title *'}
+                  </label>
                   <input
                     type="text"
                     required
@@ -441,7 +566,9 @@ export default function ApplyPage() {
 
                 {/* PROBLEM STATEMENT / OBJECTIVE */}
                 <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Problem Statement & Objective *</label>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">
+                    {formConfig.problemQuestion || 'Problem Statement & Objective *'}
+                  </label>
                   <input
                     type="text"
                     required
@@ -454,7 +581,9 @@ export default function ApplyPage() {
 
                 {/* PROJECT DESCRIPTION */}
                 <div>
-                  <label className="font-bold text-slate-700 dark:text-slate-300">Detailed Project Abstract & Technical Requirements *</label>
+                  <label className="font-bold text-slate-700 dark:text-slate-300">
+                    {formConfig.descriptionQuestion || 'Detailed Project Abstract & Technical Requirements *'}
+                  </label>
                   <textarea
                     rows={4}
                     required
@@ -577,8 +706,11 @@ export default function ApplyPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {activities.map((act) => {
-                    const alreadyApplied = isAppliedToActivity(act.id);
-                    const spotsFilled = act.enrolled_count || 0;
+                    const alreadyApplied = isAppliedToActivity(act.id, act.title);
+                    const registeredCount = allActivityApps.filter(
+                      (a) => a.activity_id === act.id || a.activity_title?.toLowerCase() === act.title?.toLowerCase() || a.title?.toLowerCase() === act.title?.toLowerCase()
+                    ).length;
+                    const spotsFilled = (act.enrolled_count || 0) + registeredCount;
                     const maxSpots = act.max_participants || 50;
                     const isLimitReached = spotsFilled >= maxSpots;
                     const isClosed = act.registration_open === false || act.status === 'closed';
@@ -635,13 +767,29 @@ export default function ApplyPage() {
 
                         {/* APPLY BUTTON */}
                         <div className="pt-2">
-                          {alreadyApplied ? (
+                          {loadingActivities || loadingHistory ? (
                             <button
                               disabled
-                              className="w-full py-2.5 rounded-xl font-bold text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center gap-1.5 cursor-not-allowed"
+                              className="w-full py-2.5 rounded-xl font-bold text-xs text-slate-400 bg-slate-800/60 border border-slate-700/30 flex items-center justify-center gap-1.5 cursor-not-allowed"
                             >
-                              <Check className="w-4 h-4" />
-                              <span>Already Registered</span>
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin text-sky-400" />
+                              <span>Checking...</span>
+                            </button>
+                          ) : applyingActivityId === act.id ? (
+                            <button
+                              disabled
+                              className="w-full py-2.5 rounded-xl font-bold text-xs text-cyan-300 bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center gap-1.5 cursor-not-allowed shadow-inner"
+                            >
+                              <RefreshCw className="w-4 h-4 animate-spin text-cyan-400" />
+                              <span>Submitting...</span>
+                            </button>
+                          ) : alreadyApplied ? (
+                            <button
+                              disabled
+                              className="w-full py-2.5 rounded-xl font-bold text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center gap-1.5 cursor-not-allowed shadow-inner"
+                            >
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                              <span>Already Applied</span>
                             </button>
                           ) : isClosed || isLimitReached ? (
                             <button
@@ -654,7 +802,7 @@ export default function ApplyPage() {
                           ) : (
                             <button
                               onClick={() => setSelectedActivity(act)}
-                              className="w-full py-2.5 rounded-xl font-bold text-xs text-white bg-sky-600 hover:bg-sky-500 shadow-md shadow-sky-500/20 transition flex items-center justify-center gap-1.5"
+                              className="w-full py-2.5 rounded-xl font-extrabold text-xs text-white bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 shadow-md shadow-sky-500/20 transition flex items-center justify-center gap-1.5 active:scale-95"
                             >
                               <span>Apply Now</span>
                               <ArrowRight className="w-3.5 h-3.5" />
@@ -664,157 +812,6 @@ export default function ApplyPage() {
                       </div>
                     );
                   })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ================= TAB 3: MY APPLICATIONS HISTORY ================= */}
-          {activeTab === 'history' && (
-            <div className="space-y-6">
-              
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <BookOpen className="w-5 h-5 text-sky-500" />
-                    <span>My Applications & Registrations</span>
-                  </h3>
-                  <p className="text-slate-500 text-[11px]">
-                    Real-time application status tracked directly from Supabase database.
-                  </p>
-                </div>
-                <button
-                  onClick={fetchUserHistory}
-                  className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-sky-500 transition"
-                  title="Refresh Status"
-                >
-                  <RefreshCw className={`w-4 h-4 ${loadingHistory ? 'animate-spin text-sky-500' : ''}`} />
-                </button>
-              </div>
-
-              {loadingHistory ? (
-                <div className="glass-card p-12 rounded-3xl text-center space-y-3">
-                  <RefreshCw className="w-8 h-8 text-sky-500 animate-spin mx-auto" />
-                  <p className="text-xs text-slate-400 font-bold">Fetching your records from Supabase...</p>
-                </div>
-              ) : userProposals.length === 0 && userActivityApps.length === 0 ? (
-                <div className="glass-card p-12 rounded-3xl text-center space-y-4 border border-slate-800">
-                  <FolderGit2 className="w-12 h-12 text-slate-500 mx-auto" />
-                  <h4 className="font-bold text-sm text-slate-900 dark:text-white">No Applications Submitted Yet</h4>
-                  <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                    You have not submitted any project proposals or activity registrations. Use the tabs above to submit your first proposal!
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  
-                  {/* PROJECT PROPOSALS SECTION */}
-                  {userProposals.length > 0 && (
-                    <div className="space-y-3">
-                      <h4 className="text-xs font-extrabold uppercase text-sky-500 tracking-wider flex items-center gap-1.5">
-                        <FolderGit2 className="w-4 h-4" /> Project Proposals ({userProposals.length})
-                      </h4>
-                      <div className="space-y-3">
-                        {userProposals.map((prop) => (
-                          <div key={prop.id} className="glass-card p-5 rounded-3xl border border-sky-500/20 space-y-3">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                              <h5 className="font-bold text-sm text-slate-900 dark:text-white">{prop.project_name}</h5>
-                              <span className={`px-3 py-1 rounded-full text-[10px] font-extrabold uppercase inline-flex items-center gap-1 w-fit ${
-                                prop.status === 'approved'
-                                  ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
-                                  : prop.status === 'rejected'
-                                  ? 'bg-red-500/10 text-red-500 border border-red-500/20'
-                                  : prop.status === 'under_review'
-                                  ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
-                                  : 'bg-sky-500/10 text-sky-500 border border-sky-500/20'
-                              }`}>
-                                <Clock className="w-3 h-3" />
-                                <span>Status: {prop.status || 'submitted'}</span>
-                              </span>
-                            </div>
-
-                            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                              {prop.project_description}
-                            </p>
-
-                            {prop.admin_comments && (
-                              <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-300 space-y-1">
-                                <span className="font-bold text-[10px] uppercase">Admin Feedback:</span>
-                                <p>{prop.admin_comments}</p>
-                              </div>
-                            )}
-
-                            <div className="flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-200 dark:border-slate-800">
-                              <span>Submitted: {prop.submitted_at ? new Date(prop.submitted_at).toLocaleDateString() : 'Recent'}</span>
-                              {prop.document_path && (
-                                <a
-                                  href={prop.document_path}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="font-bold text-sky-600 dark:text-cyan-400 hover:underline flex items-center gap-1"
-                                >
-                                  <FileText className="w-3.5 h-3.5" /> View Proposal PDF
-                                </a>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* TRAINING / ACTIVITIES SECTION */}
-                  {userActivityApps.length > 0 && (
-                    <div className="space-y-3 pt-2">
-                      <h4 className="text-xs font-extrabold uppercase text-cyan-400 tracking-wider flex items-center gap-1.5">
-                        <GraduationCap className="w-4 h-4" /> Activity Registrations ({userActivityApps.length})
-                      </h4>
-                      <div className="space-y-3">
-                        {userActivityApps.map((actApp) => {
-                          const matchingAct = activities.find((a) => a.id === actApp.activity_id);
-                          return (
-                            <div key={actApp.id} className="glass-card p-5 rounded-3xl border border-sky-500/20 space-y-3">
-                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                <h5 className="font-bold text-sm text-slate-900 dark:text-white">
-                                  {matchingAct?.title || actApp.activity_title || 'Training Program'}
-                                </h5>
-                                <span className={`px-3 py-1 rounded-full text-[10px] font-extrabold uppercase inline-flex items-center gap-1 w-fit ${
-                                  actApp.status === 'approved'
-                                    ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
-                                    : actApp.status === 'rejected'
-                                    ? 'bg-red-500/10 text-red-500 border border-red-500/20'
-                                    : 'bg-sky-500/10 text-sky-500 border border-sky-500/20'
-                                }`}>
-                                  <CheckCircle2 className="w-3 h-3" />
-                                  <span>Status: {actApp.status || 'submitted'}</span>
-                                </span>
-                              </div>
-
-                              {matchingAct && (
-                                <div className="flex flex-wrap gap-4 text-xs text-slate-600 dark:text-slate-300">
-                                  <span>📅 Date: {matchingAct.date}</span>
-                                  <span>📍 Venue: {matchingAct.venue}</span>
-                                  <span>👤 Organizer: {matchingAct.organizer}</span>
-                                </div>
-                              )}
-
-                              {actApp.admin_comments && (
-                                <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-300 space-y-1">
-                                  <span className="font-bold text-[10px] uppercase">Admin Feedback:</span>
-                                  <p>{actApp.admin_comments}</p>
-                                </div>
-                              )}
-
-                              <div className="text-[11px] text-slate-400 pt-2 border-t border-slate-200 dark:border-slate-800">
-                                <span>Applied Date: {actApp.applied_at ? new Date(actApp.applied_at).toLocaleDateString() : 'Recent'}</span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
                 </div>
               )}
             </div>
