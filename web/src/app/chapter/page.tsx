@@ -18,6 +18,7 @@ import {
   RefreshCw,
   X,
   Users,
+  UserCheck,
   GraduationCap,
   Crown,
   Award,
@@ -420,12 +421,16 @@ export default function StudentInnovationChapterPage() {
                   )}
 
                   {/* CIRCULAR PHOTO FRAME */}
-                  <div className="w-28 h-28 rounded-full overflow-hidden border-3 border-sky-400 shadow-xl shrink-0 bg-slate-950 mt-4 group-hover:scale-105 transition-transform duration-300">
-                    <img
-                      src={member.photo_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80'}
-                      alt={member.name}
-                      className="w-full h-full object-cover"
-                    />
+                  <div className="w-28 h-28 rounded-full overflow-hidden border-3 border-sky-400 shadow-xl shrink-0 bg-slate-950 mt-4 group-hover:scale-105 transition-transform duration-300 flex items-center justify-center text-sky-400 font-bold">
+                    {member.photo_url ? (
+                      <img
+                        src={member.photo_url}
+                        alt={member.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <UserCheck className="w-12 h-12 text-sky-400" />
+                    )}
                   </div>
 
                   {/* DETAILS: NAME, POST, BRANCH */}
@@ -539,12 +544,16 @@ export default function StudentInnovationChapterPage() {
                   )}
 
                   {/* CIRCULAR MEMBER PHOTO FRAME */}
-                  <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-sky-500/40 shadow-md shrink-0 bg-slate-950 group-hover:scale-105 transition-transform duration-300 relative">
-                    <img
-                      src={member.photo_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80'}
-                      alt={member.name}
-                      className="w-full h-full object-cover"
-                    />
+                  <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-sky-500/40 shadow-md shrink-0 bg-slate-950 group-hover:scale-105 transition-transform duration-300 relative flex items-center justify-center text-sky-400">
+                    {member.photo_url ? (
+                      <img
+                        src={member.photo_url}
+                        alt={member.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <UserCheck className="w-8 h-8 text-sky-400" />
+                    )}
                   </div>
 
                   {/* MEMBER DETAILS: NAME, POST, BRANCH, LINKEDIN */}

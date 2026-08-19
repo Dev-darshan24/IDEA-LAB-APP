@@ -11,9 +11,9 @@ const DEFAULT_GALLERY: GalleryItem[] = [
     title: 'AICTE IDEA LAB Inauguration Ceremony',
     caption: 'Official ribbon cutting and inaugural ceremony at TGPCET campus.',
     media_type: 'photo',
-    media_url: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&q=80',
-    image_url: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&q=80',
-    thumbnail_url: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&q=80',
+    media_url: '',
+    image_url: '',
+    thumbnail_url: '',
     category: 'Event',
     created_at: '2026-08-01',
   },
@@ -22,9 +22,9 @@ const DEFAULT_GALLERY: GalleryItem[] = [
     title: 'Hands-on 3D Printing & CAD Bootcamp',
     caption: 'Students learning additive manufacturing slicing and post-processing.',
     media_type: 'photo',
-    media_url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=1200&q=80',
-    image_url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=1200&q=80',
-    thumbnail_url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=1200&q=80',
+    media_url: '',
+    image_url: '',
+    thumbnail_url: '',
     category: 'Workshop',
     created_at: '2026-08-05',
   },
@@ -55,7 +55,7 @@ export async function GET() {
     console.error('[GET /api/gallery] Supabase fetch error:', e);
   }
 
-  return NextResponse.json({ success: true, gallery: DEFAULT_GALLERY });
+  return NextResponse.json({ success: true, gallery: [] });
 }
 
 export async function POST(req: Request) {

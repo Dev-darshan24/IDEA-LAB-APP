@@ -13,7 +13,7 @@ const DEFAULT_SECTIONS = [
     equipments: ['Intel i9 RTX Workstations', 'AutoCAD Studio', 'Autodesk Fusion 360', 'VS Code IDE', 'MATLAB & Simulink'],
     section_head: 'Prof. A. K. Sharma',
     section_head_title: 'Head of Software Prototyping Cell',
-    image_url: 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=1200&q=80',
+    image_url: '',
   },
   {
     id: 'iot-pcb-design',
@@ -23,7 +23,7 @@ const DEFAULT_SECTIONS = [
     equipments: ['CNC IoT PCB Design Machine', 'Oscilloscopes & Logic Analyzers', 'Soldering Stations', 'ESP32 & STM32 Boards'],
     section_head: 'Dr. R. V. Deshmukh',
     section_head_title: 'Head of Embedded Systems & IoT',
-    image_url: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80',
+    image_url: '',
   },
   {
     id: '3d-printing-prototyping',
@@ -33,7 +33,7 @@ const DEFAULT_SECTIONS = [
     equipments: ['Industrial Dual FDM 3D Printer', 'Precision Resin SLA 3D Printer', 'Handheld 3D Laser Scanner'],
     section_head: 'Prof. S. N. Kulkarni',
     section_head_title: 'Head of Additive Manufacturing',
-    image_url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=1200&q=80',
+    image_url: '',
   },
   {
     id: 'robotics-automation',
@@ -43,7 +43,7 @@ const DEFAULT_SECTIONS = [
     equipments: ['6-Axis Industrial Robotic Arm', 'CNC Milling Machine', 'Precision CNC Lathe Machine', 'PLC Trainer Kits'],
     section_head: 'Prof. M. B. Patil',
     section_head_title: 'Head of Robotics & Mechatronics',
-    image_url: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1200&q=80',
+    image_url: '',
   },
   {
     id: 'machining-fabrication',
@@ -53,7 +53,7 @@ const DEFAULT_SECTIONS = [
     equipments: ['High Precision CO2 Laser Cutter', 'Heavy Duty CNC Router', 'Industrial Mechanical Lathe', 'MIG/TIG Welding'],
     section_head: 'Prof. V. P. Joshi',
     section_head_title: 'Head of Manufacturing & Fabrication',
-    image_url: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=1200&q=80',
+    image_url: '',
   },
 ];
 
@@ -91,7 +91,7 @@ export async function POST(req: Request) {
       equipments: Array.isArray(equipments) ? equipments : [],
       section_head: section_head ? section_head.trim() : '',
       section_head_title: section_head_title ? section_head_title.trim() : '',
-      image_url: image_url || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=1200&q=80',
+      image_url: image_url || '',
     };
 
     const { error: upsertErr } = await supabase.from('lab_sections').upsert([updatedSection], { onConflict: 'id' });

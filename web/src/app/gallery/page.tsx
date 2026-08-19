@@ -71,31 +71,6 @@ function compressImageFile(file: File): Promise<string> {
   });
 }
 
-const INITIAL_GALLERY: GalleryItem[] = [
-  {
-    id: 'g-1',
-    title: 'AICTE IDEA LAB Inauguration Ceremony',
-    caption: 'Official ribbon cutting and inaugural ceremony at TGPCET campus.',
-    media_type: 'photo',
-    media_url: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&q=80',
-    image_url: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&q=80',
-    thumbnail_url: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&q=80',
-    category: 'Event',
-    created_at: '2026-08-01',
-  },
-  {
-    id: 'g-2',
-    title: 'Hands-on 3D Printing & CAD Bootcamp',
-    caption: 'Students learning additive manufacturing slicing and post-processing.',
-    media_type: 'photo',
-    media_url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=1200&q=80',
-    image_url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=1200&q=80',
-    thumbnail_url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=1200&q=80',
-    category: 'Workshop',
-    created_at: '2026-08-05',
-  },
-];
-
 export default function GalleryPage() {
   const { user, isSuperAdmin1, isSuperAdmin2 } = useAuth();
   
@@ -109,8 +84,8 @@ export default function GalleryPage() {
     currentRole === 'admin_incharge' || 
     currentRole === 'admin_developer';
 
-  const [gallery, setGallery] = useState<GalleryItem[]>(INITIAL_GALLERY);
-  const [loading, setLoading] = useState(false);
+  const [gallery, setGallery] = useState<GalleryItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedMediaType, setSelectedMediaType] = useState<'all' | 'photo' | 'video'>('all');
@@ -208,7 +183,7 @@ export default function GalleryPage() {
     setIsSubmitting(true);
     const processedUrl = newMediaType === 'video' ? getEmbedVideoUrl(finalMediaUrl) : finalMediaUrl;
     const defaultThumb = newMediaType === 'video' 
-      ? (newThumbnailUrl || 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80')
+      ? (newThumbnailUrl || '')
       : processedUrl;
 
     const payload = {

@@ -12,7 +12,7 @@ const DEFAULT_CHAPTER_MEMBERS: ChapterMember[] = [
     role: 'Chief Student Innovator',
     branch: 'Computer Science & Engineering',
     category: 'leadership',
-    photo_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80',
+    photo_url: '',
     linkedin_url: 'https://linkedin.com/in/darshan-drt',
     bio: 'Pioneering student innovation, autonomous rover development, and leading student prototyping teams across IDEA LAB.',
     display_order: 1,
@@ -23,7 +23,7 @@ const DEFAULT_CHAPTER_MEMBERS: ChapterMember[] = [
     role: 'Head of Software Innovation',
     branch: 'Artificial Intelligence & DS',
     category: 'leadership',
-    photo_url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=600&q=80',
+    photo_url: '',
     linkedin_url: 'https://linkedin.com/in/ananya-d',
     bio: 'Overseeing CAD/CAM simulation, full-stack web applications, and AI model integration.',
     display_order: 2,
@@ -34,7 +34,7 @@ const DEFAULT_CHAPTER_MEMBERS: ChapterMember[] = [
     role: 'Head of Hardware & Prototyping',
     branch: 'Mechanical Engineering',
     category: 'leadership',
-    photo_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80',
+    photo_url: '',
     linkedin_url: 'https://linkedin.com/in/aditya-k',
     bio: 'Specializing in 3D Printing, SLA Resin post-curing, and CNC heavy metal fabrication.',
     display_order: 3,
@@ -45,7 +45,7 @@ const DEFAULT_CHAPTER_MEMBERS: ChapterMember[] = [
     role: 'Event & Outreach Coordinator',
     branch: 'Information Technology',
     category: 'member',
-    photo_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=600&q=80',
+    photo_url: '',
     linkedin_url: 'https://linkedin.com/in/saniya-k',
     bio: 'Managing hackathons, industrial training workshops, and inter-college student delegations.',
     display_order: 4,
@@ -66,7 +66,7 @@ export async function GET() {
     console.error('[GET /api/chapter] Supabase fetch error:', e);
   }
 
-  return NextResponse.json({ success: true, members: DEFAULT_CHAPTER_MEMBERS });
+  return NextResponse.json({ success: true, members: [] });
 }
 
 export async function POST(req: Request) {
@@ -89,7 +89,7 @@ export async function POST(req: Request) {
       role: role.trim(),
       branch: branch ? branch.trim() : 'Computer Science & Engineering',
       category: category || 'member',
-      photo_url: photo_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80',
+      photo_url: photo_url || '',
       linkedin_url: linkedin_url ? linkedin_url.trim() : '',
       bio: bio ? bio.trim() : '',
       display_order: display_order !== undefined ? Number(display_order) : 99,
@@ -110,7 +110,7 @@ export async function POST(req: Request) {
       success: true,
       message: 'Chapter member saved to Supabase cloud database!',
       member: dbPayload,
-      members: updatedList || [dbPayload],
+      members: updatedList || [],
     });
   } catch (e: any) {
     console.error('[POST /api/chapter] Error:', e);

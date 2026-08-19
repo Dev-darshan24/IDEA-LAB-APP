@@ -11,7 +11,7 @@ const SECTIONS_DATA = [
     title: 'SOFTWARE CELL',
     head: 'Prof. A. K. Sharma',
     headTitle: 'Head of Software Prototyping Cell',
-    image: 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=1200&q=80',
+    image: '',
     icon: Monitor,
     color: 'from-blue-600 to-indigo-600',
     summary: 'High-performance computing workstations equipped with industry-standard CAD, CAM, coding, and simulation tools.',
@@ -29,7 +29,7 @@ const SECTIONS_DATA = [
     title: 'IOT & PCB DESIGN',
     head: 'Dr. R. V. Deshmukh',
     headTitle: 'Head of Embedded Systems & IoT',
-    image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80',
+    image: '',
     icon: Cpu,
     color: 'from-cyan-600 to-sky-600',
     summary: 'Comprehensive IoT electronic components studio featuring an automated CNC IoT PCB Design Machine.',
@@ -47,7 +47,7 @@ const SECTIONS_DATA = [
     title: '3D PRINTING & PROTOTYPING',
     head: 'Prof. S. N. Kulkarni',
     headTitle: 'Head of Additive Manufacturing',
-    image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=1200&q=80',
+    image: '',
     icon: Printer,
     color: 'from-emerald-600 to-teal-600',
     summary: 'Additive manufacturing hub housing dual high-precision 3D Printers for rapid physical prototype generation.',
@@ -65,7 +65,7 @@ const SECTIONS_DATA = [
     title: 'ROBOTICS & AUTOMATION',
     head: 'Prof. M. B. Patil',
     headTitle: 'Head of Robotics & Mechatronics',
-    image: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1200&q=80',
+    image: '',
     icon: Bot,
     color: 'from-indigo-600 to-purple-600',
     summary: 'Advanced automation cell featuring a 6-Axis Industrial Robotic Arm, CNC Lathe, and CNC Milling Machine.',
@@ -83,7 +83,7 @@ const SECTIONS_DATA = [
     title: 'MACHINING & FABRICATION',
     head: 'Prof. V. P. Joshi',
     headTitle: 'Head of Manufacturing & Fabrication',
-    image: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=1200&q=80',
+    image: '',
     icon: Wrench,
     color: 'from-amber-600 to-orange-600',
     summary: 'Heavy-duty fabrication studio including high-precision CO2 Laser Cutting Machine, CNC Router, and Lathe Machine.',
@@ -130,12 +130,18 @@ export default function SectionsPage() {
               className="glass-card rounded-4xl border border-sky-500/20 overflow-hidden shadow-xl flex flex-col lg:flex-row"
             >
               {/* IMAGE SIDE */}
-              <div className={`lg:w-1/2 h-72 lg:h-auto relative ${isEven ? 'lg:order-first' : 'lg:order-last'}`}>
-                <img
-                  src={section.image}
-                  alt={section.title}
-                  className="w-full h-full object-cover"
-                />
+              <div className={`lg:w-1/2 h-72 lg:h-auto min-h-[260px] relative ${isEven ? 'lg:order-first' : 'lg:order-last'}`}>
+                {section.image ? (
+                  <img
+                    src={section.image}
+                    alt={section.title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full min-h-[260px] bg-gradient-to-br from-slate-900 via-sky-950/60 to-slate-950 flex items-center justify-center p-8">
+                    <Icon className="w-24 h-24 text-sky-500/30" />
+                  </div>
+                )}
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent lg:hidden" />
                 <div className="absolute bottom-4 left-4 lg:hidden text-white">
                   <span className="text-[10px] uppercase tracking-wider font-bold bg-sky-600 px-2.5 py-1 rounded-full">

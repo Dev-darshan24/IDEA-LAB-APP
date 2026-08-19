@@ -35,7 +35,7 @@ const MAJOR_PROJECTS_PREVIEW = [
     title: 'Autonomous AI Inspection Rover',
     leader: 'Darshan (Chief Student Innovator)',
     category: 'Robotics & AI',
-    image: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=800&q=80',
+    image: '',
     desc: '6-wheel rocker-bogie rover built with ROS2 and custom CNC-etched PCB motor drivers for hazardous inspection.',
   },
   {
@@ -43,7 +43,7 @@ const MAJOR_PROJECTS_PREVIEW = [
     title: 'Smart IoT Agriculture System',
     leader: 'Neha Verma',
     category: 'IoT & Embedded',
-    image: 'https://images.unsplash.com/photo-1586771107445-d3ca888129ff?auto=format&fit=crop&w=800&q=80',
+    image: '',
     desc: 'LoRaWAN precision farming soil moisture telemetry with cloud dashboard telemetry.',
   },
   {
@@ -51,17 +51,17 @@ const MAJOR_PROJECTS_PREVIEW = [
     title: '6-DOF Robotic Arm Haptic Glove',
     leader: 'Vikram Singh',
     category: 'Automation',
-    image: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=800&q=80',
+    image: '',
     desc: 'Tele-operated strain-gauge haptic controller operating 6-axis industrial robotic arm.',
   },
 ];
 
 const CAROUSEL_IMAGES = [
-  { url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=1000&q=80', caption: 'High Precision 3D Printing Prototyping' },
-  { url: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1000&q=80', caption: '6-Axis Industrial Robotic Arm Facility' },
-  { url: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1000&q=80', caption: 'CNC PCB Etching & IoT Circuit Design' },
-  { url: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=1000&q=80', caption: 'CO2 Laser Cutting & Fabrication Studio' },
-  { url: 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=1000&q=80', caption: 'Software Cell CAD/CAM Workstations' },
+  { url: '', caption: 'High Precision 3D Printing Prototyping' },
+  { url: '', caption: '6-Axis Industrial Robotic Arm Facility' },
+  { url: '', caption: 'CNC PCB Etching & IoT Circuit Design' },
+  { url: '', caption: 'CO2 Laser Cutting & Fabrication Studio' },
+  { url: '', caption: 'Software Cell CAD/CAM Workstations' },
 ];
 
 export default function HomePage() {
@@ -314,18 +314,18 @@ export default function HomePage() {
               href={`/projects?id=${proj.id}`}
               className="glass-card glass-card-hover rounded-3xl overflow-hidden flex flex-col border border-sky-500/20 group cursor-pointer block"
             >
-              <div className="h-48 relative overflow-hidden">
-                <img
-                  src={
-                    proj.cover_image && !proj.cover_image.includes('photo-1563770660941')
-                      ? proj.cover_image
-                      : (proj.project_images?.[0] && !proj.project_images[0].includes('photo-1563770660941')
-                          ? proj.project_images[0]
-                          : 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1200&q=80')
-                  }
-                  alt={proj.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
+              <div className="h-48 relative overflow-hidden bg-slate-900 flex items-center justify-center">
+                {proj.cover_image || proj.project_images?.[0] ? (
+                  <img
+                    src={proj.cover_image || proj.project_images?.[0]}
+                    alt={proj.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-slate-900 via-sky-950/60 to-slate-950 flex items-center justify-center">
+                    <Rocket className="w-12 h-12 text-sky-500/30" />
+                  </div>
+                )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
                 <span className="absolute top-3 left-3 bg-black/70 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-md">
                   {proj.tech_stack?.[0] || (proj.project_type === 'team' ? 'Team Project' : 'Student Innovation')}

@@ -163,12 +163,18 @@ export default function AndroidMobileSimulator() {
                   <h4 className="text-xs font-bold text-sky-500 uppercase tracking-wider mb-2">Life Inside IDEA LAB</h4>
                   <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
                     {[
-                      { title: '3D Printing Studio', img: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=400&q=80' },
-                      { title: '6-Axis Robotic Arm', img: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=400&q=80' },
-                      { title: 'IoT PCB Etching', img: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=400&q=80' },
+                      { title: '3D Printing Studio', img: '' },
+                      { title: '6-Axis Robotic Arm', img: '' },
+                      { title: 'IoT PCB Etching', img: '' },
                     ].map((item, idx) => (
-                      <div key={idx} className="relative w-48 h-28 rounded-2xl overflow-hidden shrink-0 shadow-md group">
-                        <img src={item.img} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition" />
+                      <div key={idx} className="relative w-48 h-28 rounded-2xl overflow-hidden shrink-0 shadow-md group bg-slate-900 flex items-center justify-center">
+                        {item.img ? (
+                          <img src={item.img} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition" />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-slate-900 via-sky-950/60 to-slate-950 flex items-center justify-center">
+                            <Sparkles className="w-8 h-8 text-sky-500/30" />
+                          </div>
+                        )}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-end p-2.5">
                           <span className="text-xs font-bold text-white">{item.title}</span>
                         </div>
@@ -239,13 +245,19 @@ export default function AndroidMobileSimulator() {
                 <h3 className="text-sm font-bold text-sky-500 uppercase tracking-wider">Photo & Video Showcase</h3>
                 <div className="grid grid-cols-2 gap-2.5">
                   {[
-                    { name: 'IDEA LAB Inauguration', img: 'https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=300&q=80' },
-                    { name: '48-Hr Prototyping Hackathon', img: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=300&q=80' },
-                    { name: 'Robotic Arm Live Demo', img: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=300&q=80' },
-                    { name: 'Laser Cutting Session', img: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=300&q=80' },
+                    { name: 'IDEA LAB Inauguration', img: '' },
+                    { name: '48-Hr Prototyping Hackathon', img: '' },
+                    { name: 'Robotic Arm Live Demo', img: '' },
+                    { name: 'Laser Cutting Session', img: '' },
                   ].map((g, idx) => (
-                    <div key={idx} className="relative h-28 rounded-xl overflow-hidden shadow-sm">
-                      <img src={g.img} alt={g.name} className="w-full h-full object-cover" />
+                    <div key={idx} className="relative h-28 rounded-xl overflow-hidden shadow-sm bg-slate-900 flex items-center justify-center">
+                      {g.img ? (
+                        <img src={g.img} alt={g.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-slate-900 via-sky-950/60 to-slate-950 flex items-center justify-center">
+                          <Sparkles className="w-6 h-6 text-sky-500/30" />
+                        </div>
+                      )}
                       <div className="absolute inset-0 bg-black/60 flex items-end p-2">
                         <p className="text-[10px] font-bold text-white line-clamp-2">{g.name}</p>
                       </div>

@@ -59,7 +59,7 @@ export async function POST(req: Request) {
       title: title.trim(),
       tag: tag ? tag.trim() : 'UPDATES',
       description: description ? description.trim() : '',
-      image_url: image_url ? image_url.trim() : 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=1200&q=80',
+      image_url: image_url ? image_url.trim() : '',
       link_url: link_url ? link_url.trim() : '/apply',
       badge_color: badge_color || 'sky',
       is_active: is_active !== undefined ? Boolean(is_active) : true,

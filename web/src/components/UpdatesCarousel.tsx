@@ -89,7 +89,7 @@ export default function UpdatesCarousel({
     setFormTitle('');
     setFormTag('BOOTCAMP 2026');
     setFormDescription('');
-    setFormImageUrl('https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=1200&q=80');
+    setFormImageUrl('');
     setFormLinkUrl('/apply');
     setFormLinkMode('preset');
     setFormBadgeColor('sky');
@@ -166,7 +166,7 @@ export default function UpdatesCarousel({
         title: formTitle.trim(),
         tag: formTag.trim() || 'UPDATES',
         description: formDescription.trim(),
-        image_url: formImageUrl.trim() || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=1200&q=80',
+        image_url: formImageUrl.trim() || '',
         link_url: formLinkUrl.trim(),
         badge_color: formBadgeColor,
         display_order: Number(formDisplayOrder),
@@ -284,15 +284,17 @@ export default function UpdatesCarousel({
             className="absolute inset-0 w-full h-full pointer-events-none"
           >
             {/* FULL AREA BACKGROUND IMAGE */}
-            <img
-              src={currentUpdate.image_url}
-              alt={currentUpdate.title}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src =
-                  'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=1200&q=80';
-              }}
-            />
+            {currentUpdate.image_url ? (
+              <img
+                src={currentUpdate.image_url}
+                alt={currentUpdate.title}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-slate-900 via-sky-950/60 to-slate-950 flex items-center justify-center">
+                <Sparkles className="w-16 h-16 text-sky-500/30" />
+              </div>
+            )}
 
             {/* LIGHTENED OVERLAY FOR MAXIMUM IMAGE CLARITY & READABILITY */}
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-slate-950/15 to-transparent" />
