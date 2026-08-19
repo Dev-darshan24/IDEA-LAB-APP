@@ -51,7 +51,7 @@ export async function POST(req: Request) {
         title: title.trim(),
         badge: badge ? badge.trim() : 'LAB INCHARGE & SUPERADMIN',
         message: message ? message.trim() : '',
-        photo_url: photo_url || 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=600&q=80',
+        photo_url: photo_url || '',
       };
 
       const { error: incErr } = await supabase.from('lab_incharge').upsert([updatedIncharge], { onConflict: 'id' });

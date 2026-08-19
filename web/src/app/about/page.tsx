@@ -76,7 +76,7 @@ export default function AboutPage() {
     title: 'Head & Coordinator, AICTE IDEA LAB • TGPCET',
     badge: 'LAB INCHARGE & SUPERADMIN',
     message: '"Our mission is to bridge the gap between academic theory and physical hardware prototyping."',
-    photo_url: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=600&q=80',
+    photo_url: '',
   });
   const [faculties, setFaculties] = useState<FacultyMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -362,12 +362,16 @@ export default function AboutPage() {
         )}
 
         {/* PHOTO */}
-        <div className="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden border-4 border-sky-500/40 shadow-xl shrink-0 bg-slate-900">
-          <img
-            src={incharge.photo_url || 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=600&q=80'}
-            alt={incharge.name}
-            className="w-full h-full object-cover"
-          />
+        <div className="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden border-4 border-sky-500/40 shadow-xl shrink-0 bg-slate-900 flex items-center justify-center text-sky-400">
+          {incharge.photo_url ? (
+            <img
+              src={incharge.photo_url}
+              alt={incharge.name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <UserCheck className="w-16 h-16 text-sky-400" />
+          )}
         </div>
 
         {/* DETAILS */}
